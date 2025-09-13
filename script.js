@@ -53,7 +53,6 @@ class AIChoreographer {
     setupEventListeners() {
         // Navigation buttons
         document.getElementById('uploadMusicBtn').addEventListener('click', () => this.showUploadSection('music'));
-        document.getElementById('uploadVideoBtn').addEventListener('click', () => this.showUploadSection('video'));
         document.getElementById('trySampleBtn').addEventListener('click', () => this.trySample());
         
         // Upload tabs
@@ -111,9 +110,7 @@ class AIChoreographer {
 
     setupFileUpload() {
         const musicUploadArea = document.getElementById('musicUploadArea');
-        const videoUploadArea = document.getElementById('videoUploadArea');
         const musicFileInput = document.getElementById('musicFileInput');
-        const videoFileInput = document.getElementById('videoFileInput');
 
         // Music upload
         musicUploadArea.addEventListener('click', () => musicFileInput.click());
@@ -121,13 +118,6 @@ class AIChoreographer {
         musicUploadArea.addEventListener('dragleave', (e) => this.handleDragLeave(e, musicUploadArea));
         musicUploadArea.addEventListener('drop', (e) => this.handleDrop(e, musicFileInput));
         musicFileInput.addEventListener('change', (e) => this.handleFileSelect(e, 'music'));
-
-        // Video upload
-        videoUploadArea.addEventListener('click', () => videoFileInput.click());
-        videoUploadArea.addEventListener('dragover', (e) => this.handleDragOver(e, videoUploadArea));
-        videoUploadArea.addEventListener('dragleave', (e) => this.handleDragLeave(e, videoUploadArea));
-        videoUploadArea.addEventListener('drop', (e) => this.handleDrop(e, videoFileInput));
-        videoFileInput.addEventListener('change', (e) => this.handleFileSelect(e, 'video'));
     }
 
     setupProgressSimulation() {
@@ -215,13 +205,7 @@ class AIChoreographer {
         this.hideAllSections();
         document.getElementById('uploadSection').style.display = 'block';
         this.currentSection = 'upload';
-        
-        if (type === 'video') {
-            this.switchTab('video');
-        } else {
-            this.switchTab('music');
-        }
-        
+        this.switchTab('music');
         this.scrollToSection('uploadSection');
     }
 
@@ -765,38 +749,134 @@ class AIChoreographer {
 
     // Authentication methods
     async showLoginModal() {
-        // Simple login modal (you can enhance this)
-        const email = prompt('Enter your email:');
-        const password = prompt('Enter your password:');
-        
-        if (email && password) {
-            try {
-                const { error } = await window.choreographyService.signIn(email, password);
-                if (error) throw error;
-                
-                this.showNotification('Logged in successfully!', 'success');
-                await this.checkAuthentication();
-            } catch (error) {
-                this.showNotification('Login failed: ' + error.message, 'error');
-            }
-        }
+        this.createAuthModal('login');
     }
 
     async showSignupModal() {
-        // Simple signup modal (you can enhance this)
-        const email = prompt('Enter your email:');
-        const password = prompt('Enter your password:');
-        const fullName = prompt('Enter your full name:');
-        
-        if (email && password && fullName) {
-            try {
+        this.createAuthModal('signup');
+    }
+
+    createAuthModal(type) {
+        // Remove existing modal if any
+        const existingModal = document.getElementById('authModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const isLogin = type === 'login';
+        const modal = document.createElement('div');
+        modal.id = 'authModal';
+        modal.className = 'auth-modal';
+        modal.innerHTML = `
+            <div class="auth-modal-overlay">
+                <div class="auth-modal-content">
+                    <div class="auth-modal-header">
+                        <h2>${isLogin ? 'Welcome Back' : 'Create Account'}</h2>
+                        <button class="auth-modal-close" id="closeAuthModal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="auth-modal-body">
+                        <form id="authForm" class="auth-form">
+                            ${!isLogin ? `
+                                <div class="form-group">
+                                    <label for="fullName">Full Name</label>
+                                    <input type="text" id="fullName" name="fullName" required>
+                                </div>
+                            ` : ''}
+                            <div class="form-group">
+                                <label for="email">Email</label>
+                                <input type="email" id="email" name="email" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="password">Password</label>
+                                <input type="password" id="password" name="password" required>
+                            </div>
+                            ${isLogin ? `
+                                <div class="form-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="rememberMe">
+                                        <span class="checkmark"></span>
+                                        Remember me
+                                    </label>
+                                </div>
+                            ` : ''}
+                            <button type="submit" class="btn btn-primary auth-submit-btn">
+                                <i class="fas fa-${isLogin ? 'sign-in-alt' : 'user-plus'}"></i>
+                                ${isLogin ? 'Sign In' : 'Create Account'}
+                            </button>
+                        </form>
+                        <div class="auth-modal-footer">
+                            <p>
+                                ${isLogin ? "Don't have an account?" : "Already have an account?"}
+                                <button class="auth-switch-btn" id="switchAuthType">
+                                    ${isLogin ? 'Sign up' : 'Sign in'}
+                                </button>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Add event listeners
+        document.getElementById('closeAuthModal').addEventListener('click', () => this.closeAuthModal());
+        document.getElementById('switchAuthType').addEventListener('click', () => {
+            this.closeAuthModal();
+            this.createAuthModal(isLogin ? 'signup' : 'login');
+        });
+        document.getElementById('authForm').addEventListener('submit', (e) => this.handleAuthSubmit(e, isLogin));
+
+        // Close on overlay click
+        modal.querySelector('.auth-modal-overlay').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                this.closeAuthModal();
+            }
+        });
+
+        // Animate in
+        setTimeout(() => modal.classList.add('show'), 10);
+    }
+
+    closeAuthModal() {
+        const modal = document.getElementById('authModal');
+        if (modal) {
+            modal.classList.remove('show');
+            setTimeout(() => modal.remove(), 300);
+        }
+    }
+
+    async handleAuthSubmit(e, isLogin) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const email = formData.get('email');
+        const password = formData.get('password');
+        const fullName = formData.get('fullName');
+
+        const submitBtn = e.target.querySelector('.auth-submit-btn');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        submitBtn.disabled = true;
+
+        try {
+            if (isLogin) {
+                const { error } = await window.choreographyService.signIn(email, password);
+                if (error) throw error;
+                this.showNotification('Logged in successfully!', 'success');
+            } else {
                 const { error } = await window.choreographyService.signUp(email, password, fullName);
                 if (error) throw error;
-                
                 this.showNotification('Account created! Please check your email to verify.', 'success');
-            } catch (error) {
-                this.showNotification('Signup failed: ' + error.message, 'error');
             }
+            this.closeAuthModal();
+            await this.checkAuthentication();
+        } catch (error) {
+            this.showNotification(`${isLogin ? 'Login' : 'Signup'} failed: ${error.message}`, 'error');
+        } finally {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
         }
     }
 

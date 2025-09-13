@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Choreographer - Dance with AI</title>
+    <title>ChoreoAI - Dance with AI</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -20,7 +20,7 @@
         <div class="container">
             <div class="logo">
                 <i class="fas fa-music"></i>
-                <span>AI Choreographer</span>
+                <span>ChoreoAI</span>
             </div>
             <nav class="nav">
                 <a href="#projects" class="nav-link">Projects</a>
@@ -67,10 +67,6 @@
                         <i class="fas fa-music"></i>
                         Upload Music
                     </button>
-                    <button class="btn btn-secondary" id="uploadVideoBtn">
-                        <i class="fas fa-video"></i>
-                        Upload Video
-                    </button>
                     <button class="btn btn-outline" id="trySampleBtn">
                         <i class="fas fa-play"></i>
                         Try Sample
@@ -106,8 +102,7 @@
             <div class="upload-container">
                 <!-- Upload Tabs -->
                 <div class="upload-tabs">
-                    <button class="tab-btn active" data-tab="music">New from Music</button>
-                    <button class="tab-btn" data-tab="video">From Video</button>
+                    <button class="tab-btn active" data-tab="music">Upload Music</button>
                 </div>
 
                 <div class="upload-content">
@@ -161,43 +156,6 @@
                         </div>
                     </div>
 
-                    <!-- Video Upload Tab -->
-                    <div class="tab-content" id="videoTab">
-                        <div class="upload-panel">
-                            <div class="upload-area" id="videoUploadArea">
-                                <div class="upload-icon">
-                                    <i class="fas fa-video"></i>
-                                </div>
-                                <h3>Drop your video file here</h3>
-                                <p>or <span class="upload-link">browse files</span></p>
-                                <input type="file" id="videoFileInput" accept="video/*" style="display: none;">
-                            </div>
-                        </div>
-
-                        <div class="settings-panel">
-                            <div class="setting-group">
-                                <label for="videoStyle">Extract Style</label>
-                                <select id="videoStyle" class="select-input">
-                                    <option value="auto">Auto-detect</option>
-                                    <option value="hiphop">Hip Hop</option>
-                                    <option value="ballet">Ballet</option>
-                                    <option value="house">House</option>
-                                    <option value="contemporary">Contemporary</option>
-                                </select>
-                            </div>
-
-                            <div class="setting-group">
-                                <label for="complexity">Movement Complexity</label>
-                                <div class="slider-container">
-                                    <input type="range" id="complexity" min="1" max="5" value="3" class="slider">
-                                    <div class="slider-labels">
-                                        <span>Simple</span>
-                                        <span>Complex</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="generate-section">
@@ -373,7 +331,7 @@
                     <a href="#logout">Logout</a>
                 </div>
                 <div class="footer-copyright">
-                    <p>&copy; 2024 AI Choreographer. All rights reserved.</p>
+                    <p>&copy; 2024 ChoreoAI. All rights reserved.</p>
                 </div>
             </div>
         </div>
