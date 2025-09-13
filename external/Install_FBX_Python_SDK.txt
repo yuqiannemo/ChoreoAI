@@ -1,0 +1,45 @@
+======================================
+
+Autodesk FBX Python SDK Installation Instructions
+
+======================================
+
+INTRODUCTION
+
+This file describes the installation procedure
+for the Autodesk FBX Python SDK version 2020.3.4.
+______________________________________
+PACKAGE CONTENT
+
+The distribution .tar file contains the following files:
+    - Install_FBX_Python_SDK.txt: This file.
+    - FBX202034_FBXPYTHONSDK_LINUX: The FBX Python SDK version 2020.3.4
+      installation program.
+______________________________________  
+INSTALLATION INSTRUCTIONS
+
+The installation program will install the FBX Python SDK under
+the specified directory.
+
+1) Make sure you have execution permission on the installation
+   program (FBX202034_FBXPYTHONSDK_LINUX):
+      % chmod ugo+x FBX202034_FBXPYTHONSDK_LINUX
+      
+2) Execute the installation program. You must provide an
+   existing installation directory as a parameter. For example, if
+   you wish to install the FBX Python SDK under /usr/FBX202034_FBXPYTHONSDK_LINUX
+
+   - make sure /usr/FBX202034_FBXPYTHONSDK_LINUX exists
+   - type the following command:
+      % ./FBX202034_FBXPYTHONSDK_LINUX /usr/FBX202034_FBXPYTHONSDK_LINUX
+      
+   Note that you must agree to the terms of the END USER
+   LICENSE AGREEMENT in order to complete the installation.
+______________________________________
+FOR MORE INFORMATION
+
+Please read the accompanying README.md for more details
+
+Thank you for using the FBX Python SDK,
+The FBX SDK Team.
+
