@@ -1,0 +1,3 @@
+[submodule "external/EDGE"]
+	path = external/EDGE
+	url = https://github.com/yuqiannemo/EDGE.git
