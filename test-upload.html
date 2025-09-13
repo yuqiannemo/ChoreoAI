@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Upload Flow</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; margin: 5px; }
+        input { margin: 10px 0; }
+        .status { padding: 10px; margin: 10px 0; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>AI Choreographer Upload Test</h1>
+    
+    <div class="section">
+        <h2>1. Authentication</h2>
+        <div id="authStatus" class="status">Not authenticated</div>
+        <button onclick="signUp()">Sign Up</button>
+        <button onclick="signIn()">Sign In</button>
+        <button onclick="signOut()">Sign Out</button>
+    </div>
+    
+    <div class="section">
+        <h2>2. File Upload Test</h2>
+        <input type="file" id="fileInput" accept="audio/*">
+        <button onclick="uploadFile()">Upload File</button>
+        <div id="uploadStatus" class="status">No file selected</div>
+    </div>
+    
+    <div class="section">
+        <h2>3. Projects</h2>
+        <button onclick="listProjects()">List My Projects</button>
+        <div id="projectsList"></div>
+    </div>
+
+    <script>
+        // Supabase setup
+        const supabaseUrl = 'https://likdbicjuoqqwwrfjial.supabase.co'
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxpa2RiaWNqdW9xcXd3cmZqaWFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODU5MzIsImV4cCI6MjA3MzM2MTkzMn0.T9IGw2rSxAK-3IE1dfDbjqosT91mUscO_yPJZMNguT4'
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey)
+        
+        let currentUser = null
+        
+        // Check auth status on load
+        checkAuth()
+        
+        async function checkAuth() {
+            const { data: { user } } = await supabaseClient.auth.getUser()
+            currentUser = user
+            updateAuthStatus()
+        }
+        
+        function updateAuthStatus() {
+            const status = document.getElementById('authStatus')
+            if (currentUser) {
+                status.textContent = `✅ Signed in as: ${currentUser.email}`
+                status.className = 'status success'
+            } else {
+                status.textContent = '❌ Not authenticated'
+                status.className = 'status error'
+            }
+        }
+        
+        async function signUp() {
+            const email = prompt('Enter email:')
+            const password = prompt('Enter password:')
+            const fullName = prompt('Enter full name:')
+            
+            if (email && password && fullName) {
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: { full_name: fullName }
+                    }
+                })
+                
+                if (error) {
+                    alert('Sign up error: ' + error.message)
+                } else {
+                    alert('Sign up successful! Check your email to verify.')
+                    await checkAuth()
+                }
+            }
+        }
+        
+        async function signIn() {
+            const email = prompt('Enter email:')
+            const password = prompt('Enter password:')
+            
+            if (email && password) {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email,
+                    password
+                })
+                
+                if (error) {
+                    alert('Sign in error: ' + error.message)
+                } else {
+                    await checkAuth()
+                }
+            }
+        }
+        
+        async function signOut() {
+            await supabaseClient.auth.signOut()
+            await checkAuth()
+        }
+        
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput')
+            const file = fileInput.files[0]
+            
+            if (!file) {
+                alert('Please select a file first')
+                return
+            }
+            
+            if (!currentUser) {
+                alert('Please sign in first')
+                return
+            }
+            
+            const status = document.getElementById('uploadStatus')
+            status.textContent = 'Uploading...'
+            status.className = 'status'
+            
+            try {
+                // Create project
+                const { data: project, error: projectError } = await supabaseClient
+                    .from('choreography_projects')
+                    .insert({
+                        user_id: currentUser.id,
+                        title: file.name.split('.')[0],
+                        audio_file_name: file.name,
+                        audio_file_size: file.size,
+                        audio_file_type: file.type,
+                        dance_style: 'hiphop',
+                        skill_level: 3,
+                        tempo_preference: 120,
+                        status: 'uploaded'
+                    })
+                    .select()
+                    .single()
+                
+                if (projectError) throw projectError
+                
+                // Upload file
+                const fileExt = file.name.split('.').pop()
+                const fileName = `${project.id}.${fileExt}`
+                const filePath = `${currentUser.id}/${fileName}`
+                
+                const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                    .from('audio-files')
+                    .upload(filePath, file)
+                
+                if (uploadError) throw uploadError
+                
+                // Update project with file path
+                await supabaseClient
+                    .from('choreography_projects')
+                    .update({ audio_file_path: filePath })
+                    .eq('id', project.id)
+                
+                status.textContent = `✅ File uploaded successfully! Project ID: ${project.id}`
+                status.className = 'status success'
+                
+            } catch (error) {
+                status.textContent = `❌ Upload failed: ${error.message}`
+                status.className = 'status error'
+                console.error('Upload error:', error)
+            }
+        }
+        
+        async function listProjects() {
+            if (!currentUser) {
+                alert('Please sign in first')
+                return
+            }
+            
+            const { data, error } = await supabaseClient
+                .from('choreography_projects')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .order('created_at', { ascending: false })
+            
+            const list = document.getElementById('projectsList')
+            if (error) {
+                list.innerHTML = `<div class="status error">Error: ${error.message}</div>`
+            } else if (data.length === 0) {
+                list.innerHTML = '<div class="status">No projects found</div>'
+            } else {
+                list.innerHTML = data.map(project => `
+                    <div style="border: 1px solid #ddd; padding: 10px; margin: 5px 0;">
+                        <strong>${project.title}</strong><br>
+                        File: ${project.audio_file_name}<br>
+                        Size: ${(project.audio_file_size / 1024 / 1024).toFixed(2)} MB<br>
+                        Status: ${project.status}<br>
+                        Created: ${new Date(project.created_at).toLocaleString()}
+                    </div>
+                `).join('')
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "name": "ai-choreographer-frontend",
+  "version": "1.0.0",
+  "description": "AI Choreographer Frontend with Supabase Integration",
+  "type": "module",
+  "main": "script.js",
+  "scripts": {
+    "dev": "npx serve .",
+    "start": "npx serve .",
+    "build": "echo 'No build step required for vanilla JS'",
+    "test": "echo 'No tests specified'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0"
+  },
+  "devDependencies": {
+    "serve": "^14.2.1"
+  },
+  "keywords": [
+    "ai",
+    "choreography",
+    "dance",
+    "supabase",
+    "frontend"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

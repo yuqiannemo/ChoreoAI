@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug AI Choreographer</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="supabase-service.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .debug { background: #f0f0f0; padding: 10px; margin: 10px 0; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+    </style>
+</head>
+<body>
+    <h1>Debug AI Choreographer</h1>
+    
+    <div class="debug">
+        <h3>1. Supabase Connection</h3>
+        <div id="supabaseStatus">Checking...</div>
+    </div>
+    
+    <div class="debug">
+        <h3>2. Service Status</h3>
+        <div id="serviceStatus">Checking...</div>
+    </div>
+    
+    <div class="debug">
+        <h3>3. Authentication Status</h3>
+        <div id="authStatus">Checking...</div>
+    </div>
+    
+    <div class="debug">
+        <h3>4. Navigation Test</h3>
+        <div id="navStatus">Checking...</div>
+    </div>
+
+    <script>
+        async function runDebug() {
+            // Test 1: Supabase Connection
+            const supabaseStatus = document.getElementById('supabaseStatus')
+            try {
+                if (window.supabase) {
+                    supabaseStatus.innerHTML = '✅ Supabase loaded successfully'
+                    supabaseStatus.className = 'success'
+                } else {
+                    supabaseStatus.innerHTML = '❌ Supabase not loaded'
+                    supabaseStatus.className = 'error'
+                }
+            } catch (error) {
+                supabaseStatus.innerHTML = `❌ Error: ${error.message}`
+                supabaseStatus.className = 'error'
+            }
+            
+            // Test 2: Service Status
+            const serviceStatus = document.getElementById('serviceStatus')
+            try {
+                if (window.choreographyService) {
+                    serviceStatus.innerHTML = '✅ ChoreographyService loaded successfully'
+                    serviceStatus.className = 'success'
+                } else {
+                    serviceStatus.innerHTML = '❌ ChoreographyService not loaded'
+                    serviceStatus.className = 'error'
+                }
+            } catch (error) {
+                serviceStatus.innerHTML = `❌ Error: ${error.message}`
+                serviceStatus.className = 'error'
+            }
+            
+            // Test 3: Authentication
+            const authStatus = document.getElementById('authStatus')
+            try {
+                if (window.choreographyService) {
+                    const user = await window.choreographyService.getCurrentUser()
+                    if (user) {
+                        authStatus.innerHTML = `✅ User signed in: ${user.email}`
+                        authStatus.className = 'success'
+                    } else {
+                        authStatus.innerHTML = '❌ No user signed in'
+                        authStatus.className = 'error'
+                    }
+                } else {
+                    authStatus.innerHTML = '❌ Service not available'
+                    authStatus.className = 'error'
+                }
+            } catch (error) {
+                authStatus.innerHTML = `❌ Error: ${error.message}`
+                authStatus.className = 'error'
+            }
+            
+            // Test 4: Navigation Update
+            const navStatus = document.getElementById('navStatus')
+            try {
+                // Simulate the navigation update
+                const nav = document.createElement('div')
+                nav.className = 'nav'
+                
+                if (window.choreographyService) {
+                    const user = await window.choreographyService.getCurrentUser()
+                    if (user) {
+                        nav.innerHTML = `
+                            <a href="#projects" class="nav-link">Projects</a>
+                            <a href="#profile" class="nav-link">Profile</a>
+                            <button class="btn btn-outline" id="logoutBtn">Logout</button>
+                        `
+                        navStatus.innerHTML = '✅ Navigation would show: Projects, Profile, Logout'
+                        navStatus.className = 'success'
+                    } else {
+                        nav.innerHTML = `
+                            <button class="btn btn-outline" id="loginBtn">Login</button>
+                            <button class="btn btn-primary" id="signupBtn">Sign Up</button>
+                        `
+                        navStatus.innerHTML = '✅ Navigation would show: Login, Sign Up'
+                        navStatus.className = 'success'
+                    }
+                } else {
+                    navStatus.innerHTML = '❌ Cannot test navigation - service not available'
+                    navStatus.className = 'error'
+                }
+            } catch (error) {
+                navStatus.innerHTML = `❌ Error: ${error.message}`
+                navStatus.className = 'error'
+            }
+        }
+        
+        // Run debug when page loads
+        window.addEventListener('load', runDebug)
+    </script>
+</body>
+</html>

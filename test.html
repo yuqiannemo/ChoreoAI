@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Choreographer Test</title>
+    <!-- Supabase CDN -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Testing Supabase Connection</h1>
+    <div id="status">Connecting...</div>
+    
+    <script>
+        // Test Supabase connection
+        const supabaseUrl = 'https://likdbicjuoqqwwrfjial.supabase.co'
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxpa2RiaWNqdW9xcXd3cmZqaWFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODU5MzIsImV4cCI6MjA3MzM2MTkzMn0.T9IGw2rSxAK-3IE1dfDbjqosT91mUscO_yPJZMNguT4'
+        
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey)
+        
+        // Test connection
+        supabaseClient.from('users').select('count').then(({ data, error }) => {
+            const statusDiv = document.getElementById('status')
+            if (error) {
+                statusDiv.innerHTML = `❌ Connection failed: ${error.message}`
+                statusDiv.style.color = 'red'
+            } else {
+                statusDiv.innerHTML = '✅ Supabase connected successfully!'
+                statusDiv.style.color = 'green'
+            }
+        })
+    </script>
+</body>
+</html>

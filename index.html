@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Choreographer - Dance with AI</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Supabase CDN -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <!-- Supabase Service -->
+    <script src="supabase-service.js"></script>
+    <!-- Main App Script -->
+    <script src="script.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-music"></i>
+                <span>AI Choreographer</span>
+            </div>
+            <nav class="nav">
+                <a href="#projects" class="nav-link">Projects</a>
+                <a href="#profile" class="nav-link">Profile</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1 class="hero-title">
+                    Create Stunning Choreography
+                    <span class="gradient-text">with AI</span>
+                </h1>
+                <p class="hero-subtitle">
+                    Upload your music and watch as our AI choreographer creates beautiful dance routines tailored to your style and skill level.
+                </p>
+                
+                <!-- Style Showcase -->
+                <div class="style-showcase">
+                    <div class="style-item" data-style="hiphop">
+                        <i class="fas fa-headphones"></i>
+                        <span>Hip Hop</span>
+                    </div>
+                    <div class="style-item" data-style="ballet">
+                        <i class="fas fa-balance-scale"></i>
+                        <span>Ballet</span>
+                    </div>
+                    <div class="style-item" data-style="house">
+                        <i class="fas fa-fire"></i>
+                        <span>House</span>
+                    </div>
+                    <div class="style-item" data-style="contemporary">
+                        <i class="fas fa-wind"></i>
+                        <span>Contemporary</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="hero-actions">
+                    <button class="btn btn-primary" id="uploadMusicBtn">
+                        <i class="fas fa-music"></i>
+                        Upload Music
+                    </button>
+                    <button class="btn btn-secondary" id="uploadVideoBtn">
+                        <i class="fas fa-video"></i>
+                        Upload Video
+                    </button>
+                    <button class="btn btn-outline" id="trySampleBtn">
+                        <i class="fas fa-play"></i>
+                        Try Sample
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3D Avatar Demo Area -->
+            <div class="avatar-demo">
+                <div class="avatar-container">
+                    <div class="avatar-placeholder">
+                        <div class="skeleton-demo">
+                            <div class="skeleton-head"></div>
+                            <div class="skeleton-body"></div>
+                            <div class="skeleton-arms">
+                                <div class="skeleton-arm left"></div>
+                                <div class="skeleton-arm right"></div>
+                            </div>
+                            <div class="skeleton-legs">
+                                <div class="skeleton-leg left"></div>
+                                <div class="skeleton-leg right"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Upload Section -->
+    <section class="upload-section" id="uploadSection" style="display: none;">
+        <div class="container">
+            <div class="upload-container">
+                <!-- Upload Tabs -->
+                <div class="upload-tabs">
+                    <button class="tab-btn active" data-tab="music">New from Music</button>
+                    <button class="tab-btn" data-tab="video">From Video</button>
+                </div>
+
+                <div class="upload-content">
+                    <!-- Music Upload Tab -->
+                    <div class="tab-content active" id="musicTab">
+                        <div class="upload-panel">
+                            <div class="upload-area" id="musicUploadArea">
+                                <div class="upload-icon">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                </div>
+                                <h3>Drop your music file here</h3>
+                                <p>or <span class="upload-link">browse files</span></p>
+                                <input type="file" id="musicFileInput" accept="audio/*" style="display: none;">
+                            </div>
+                        </div>
+
+                        <div class="settings-panel">
+                            <div class="setting-group">
+                                <label for="genreSelect">Dance Style</label>
+                                <select id="genreSelect" class="select-input">
+                                    <option value="hiphop">Hip Hop</option>
+                                    <option value="ballet">Ballet</option>
+                                    <option value="house">House</option>
+                                    <option value="contemporary">Contemporary</option>
+                                    <option value="jazz">Jazz</option>
+                                    <option value="popping">Popping</option>
+                                </select>
+                            </div>
+
+                            <div class="setting-group">
+                                <label for="skillLevel">Skill Level</label>
+                                <div class="slider-container">
+                                    <input type="range" id="skillLevel" min="1" max="5" value="3" class="slider">
+                                    <div class="slider-labels">
+                                        <span>Beginner</span>
+                                        <span>Advanced</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="setting-group">
+                                <label for="tempoPreference">Tempo Preference</label>
+                                <div class="slider-container">
+                                    <input type="range" id="tempoPreference" min="60" max="180" value="120" class="slider">
+                                    <div class="slider-labels">
+                                        <span>Slow</span>
+                                        <span>Fast</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Video Upload Tab -->
+                    <div class="tab-content" id="videoTab">
+                        <div class="upload-panel">
+                            <div class="upload-area" id="videoUploadArea">
+                                <div class="upload-icon">
+                                    <i class="fas fa-video"></i>
+                                </div>
+                                <h3>Drop your video file here</h3>
+                                <p>or <span class="upload-link">browse files</span></p>
+                                <input type="file" id="videoFileInput" accept="video/*" style="display: none;">
+                            </div>
+                        </div>
+
+                        <div class="settings-panel">
+                            <div class="setting-group">
+                                <label for="videoStyle">Extract Style</label>
+                                <select id="videoStyle" class="select-input">
+                                    <option value="auto">Auto-detect</option>
+                                    <option value="hiphop">Hip Hop</option>
+                                    <option value="ballet">Ballet</option>
+                                    <option value="house">House</option>
+                                    <option value="contemporary">Contemporary</option>
+                                </select>
+                            </div>
+
+                            <div class="setting-group">
+                                <label for="complexity">Movement Complexity</label>
+                                <div class="slider-container">
+                                    <input type="range" id="complexity" min="1" max="5" value="3" class="slider">
+                                    <div class="slider-labels">
+                                        <span>Simple</span>
+                                        <span>Complex</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="generate-section">
+                    <button class="btn btn-primary btn-large" id="generateBtn">
+                        <i class="fas fa-magic"></i>
+                        Generate Choreography
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Generation Progress -->
+    <section class="progress-section" id="progressSection" style="display: none;">
+        <div class="container">
+            <div class="progress-container">
+                <div class="progress-header">
+                    <h2>Creating Your Choreography</h2>
+                    <p>Our AI is analyzing your music and generating the perfect dance routine...</p>
+                </div>
+
+                <div class="progress-visual">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">0%</div>
+                </div>
+
+                <div class="progress-animation">
+                    <div class="skeleton-animation">
+                        <div class="skeleton-head"></div>
+                        <div class="skeleton-body"></div>
+                        <div class="skeleton-arms">
+                            <div class="skeleton-arm left"></div>
+                            <div class="skeleton-arm right"></div>
+                        </div>
+                        <div class="skeleton-legs">
+                            <div class="skeleton-leg left"></div>
+                            <div class="skeleton-leg right"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-actions">
+                    <button class="btn btn-outline" id="cancelBtn">Cancel</button>
+                    <button class="btn btn-secondary" id="modifyBtn">Modify Settings</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Studio Player -->
+    <section class="studio-section" id="studioSection" style="display: none;">
+        <div class="container">
+            <div class="studio-container">
+                <div class="studio-header">
+                    <h2>Your Choreography</h2>
+                    <div class="studio-controls-top">
+                        <button class="btn btn-outline" id="mirrorToggle">
+                            <i class="fas fa-sync-alt"></i>
+                            Mirror
+                        </button>
+                        <div class="camera-presets">
+                            <button class="preset-btn active" data-angle="front">Front</button>
+                            <button class="preset-btn" data-angle="side">Side</button>
+                            <button class="preset-btn" data-angle="3d">3D</button>
+                            <button class="preset-btn" data-angle="top">Top</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="studio-viewport">
+                    <div class="avatar-container-3d">
+                        <div class="avatar-3d">
+                            <div class="skeleton-demo-3d">
+                                <div class="skeleton-head"></div>
+                                <div class="skeleton-body"></div>
+                                <div class="skeleton-arms">
+                                    <div class="skeleton-arm left"></div>
+                                    <div class="skeleton-arm right"></div>
+                                </div>
+                                <div class="skeleton-legs">
+                                    <div class="skeleton-leg left"></div>
+                                    <div class="skeleton-leg right"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="studio-controls">
+                    <div class="playback-controls">
+                        <button class="control-btn" id="rewindBtn">
+                            <i class="fas fa-step-backward"></i>
+                        </button>
+                        <button class="control-btn play-btn" id="playBtn">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <button class="control-btn" id="forwardBtn">
+                            <i class="fas fa-step-forward"></i>
+                        </button>
+                    </div>
+
+                    <div class="speed-controls">
+                        <span>Speed:</span>
+                        <button class="speed-btn" data-speed="0.25">0.25x</button>
+                        <button class="speed-btn" data-speed="0.5">0.5x</button>
+                        <button class="speed-btn active" data-speed="1">1x</button>
+                        <button class="speed-btn" data-speed="1.5">1.5x</button>
+                        <button class="speed-btn" data-speed="2">2x</button>
+                    </div>
+
+                    <div class="timeline-container">
+                        <div class="timeline" id="timeline">
+                            <div class="timeline-progress" id="timelineProgress"></div>
+                            <div class="timeline-scrubber" id="timelineScrubber"></div>
+                        </div>
+                        <div class="timeline-time">
+                            <span id="currentTime">0:00</span>
+                            <span id="totalTime">3:45</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="gesture-hints">
+                    <div class="hint-item">
+                        <i class="fas fa-hand-point-left"></i>
+                        <span>Swipe left to rewind</span>
+                    </div>
+                    <div class="hint-item">
+                        <i class="fas fa-hand-point-right"></i>
+                        <span>Swipe right to forward</span>
+                    </div>
+                    <div class="hint-item">
+                        <i class="fas fa-hand-paper"></i>
+                        <span>Palm up to pause/play</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Export Section -->
+    <section class="export-section" id="exportSection" style="display: none;">
+        <div class="container">
+            <div class="export-container">
+                <h2>Export & Share</h2>
+                <div class="export-options">
+                    <button class="export-btn">
+                        <i class="fas fa-download"></i>
+                        Download Video
+                    </button>
+                    <button class="export-btn">
+                        <i class="fas fa-cube"></i>
+                        Export GLB
+                    </button>
+                    <button class="export-btn">
+                        <i class="fas fa-share"></i>
+                        Share Link
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="#terms">Terms</a>
+                    <a href="#help">Help</a>
+                    <a href="#logout">Logout</a>
+                </div>
+                <div class="footer-copyright">
+                    <p>&copy; 2024 AI Choreographer. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
