@@ -1,11 +1,11 @@
 // Suno AI API Service
-// Based on Suno HackMIT 2025 API Documentation
+// Based on actual Suno HackMIT 2025 API from the notebook
 
 class SunoService {
     constructor() {
-        // Note: In production, these should be environment variables
-        this.apiKey = 'your-suno-api-key'; // Replace with actual API key
-        this.baseUrl = 'https://api.suno.ai/v1'; // Replace with actual API endpoint
+        this.API_KEY = 'b605c69954184dd29c983b8f510b5719';
+        this.GENERATE_ENDPOINT = 'https://studio-api.prod.suno.com/api/v2/external/hackmit/generate';
+        this.CLIPS_ENDPOINT = 'https://studio-api.prod.suno.com/api/v2/external/hackmit/clips';
         this.isGenerating = false;
         this.currentGeneration = null;
     }
@@ -28,60 +28,57 @@ class SunoService {
         this.isGenerating = true;
 
         try {
-            // Validate parameters
-            this.validateParams(params);
-
-            // Prepare the request payload
-            const payload = {
-                prompt: params.prompt,
-                style: params.style,
-                mood: params.mood,
-                duration: Math.min(300, Math.max(30, params.duration)),
-                tempo: Math.min(200, Math.max(60, params.tempo)),
-                // Additional parameters based on Suno API spec
-                include_lyrics: true,
-                instrumental: false,
-                custom_style: `${params.style} ${params.mood}`,
-                generation_type: 'text_to_song'
+            console.log('Generating song with Suno API...', params);
+            
+            // Create the request body based on the notebook example
+            const requestBody = {
+                topic: params.prompt,
+                tags: params.style // Just use the genre as the tag
             };
 
-            console.log('Generating song with Suno AI:', payload);
-
-            // Make API request to Suno
-            const response = await fetch(`${this.baseUrl}/generate`, {
+            const response = await fetch(this.GENERATE_ENDPOINT, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.apiKey}`,
-                    'X-API-Version': '2025-01'
+                    'Authorization': `Bearer ${this.API_KEY}`,
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(requestBody)
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(`Suno API error: ${response.status} - ${errorData.message || response.statusText}`);
+                const errorText = await response.text();
+                throw new Error(`Suno API error: ${response.status} ${response.statusText} - ${errorText}`);
             }
 
-            const result = await response.json();
+            const data = await response.json();
+            console.log('Suno generation response:', data);
             
-            // Store current generation for polling
-            this.currentGeneration = {
-                id: result.generation_id,
-                status: 'processing',
-                created_at: new Date().toISOString()
-            };
+            // Return the first clip from the response
+            if (data && data.length > 0) {
+                const clip = data[0];
+                this.currentGeneration = {
+                    id: clip.id,
+                    status: clip.status,
+                    audio_url: clip.audio_url,
+                    title: clip.title,
+                    metadata: clip.metadata
+                };
 
-            return {
-                success: true,
-                generation_id: result.generation_id,
-                status: 'processing',
-                estimated_time: result.estimated_completion_time || 60,
-                message: 'Song generation started successfully'
-            };
+                return {
+                    success: true,
+                    generation_id: clip.id,
+                    status: clip.status,
+                    audio_url: clip.audio_url,
+                    title: clip.title,
+                    metadata: clip.metadata,
+                    message: 'Song generation started successfully'
+                };
+            } else {
+                throw new Error('No clips returned from Suno API');
+            }
 
         } catch (error) {
-            console.error('Suno API error:', error);
+            console.error('Suno generation error:', error);
             this.isGenerating = false;
             throw error;
         }
@@ -89,33 +86,43 @@ class SunoService {
 
     /**
      * Check the status of a song generation
-     * @param {string} generationId - The generation ID to check
+     * @param {string} clipId - The clip ID to check
      * @returns {Promise<Object>} Status information
      */
-    async checkGenerationStatus(generationId) {
+    async checkGenerationStatus(clipId) {
         try {
-            const response = await fetch(`${this.baseUrl}/status/${generationId}`, {
+            console.log('Polling Suno generation status for clip:', clipId);
+            
+            const response = await fetch(`${this.CLIPS_ENDPOINT}?ids=${clipId}`, {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
-                    'X-API-Version': '2025-01'
+                    'Authorization': `Bearer ${this.API_KEY}`
                 }
             });
 
             if (!response.ok) {
-                throw new Error(`Status check failed: ${response.status}`);
+                const errorText = await response.text();
+                throw new Error(`Suno API error: ${response.status} ${response.statusText} - ${errorText}`);
             }
 
-            const result = await response.json();
+            const data = await response.json();
+            console.log('Suno polling response:', data);
             
-            return {
-                id: generationId,
-                status: result.status, // 'processing', 'completed', 'failed'
-                progress: result.progress || 0,
-                message: result.message || 'Processing...',
-                result: result.result || null,
-                error: result.error || null
-            };
+            if (data && data.length > 0) {
+                const clip = data[0];
+                return {
+                    id: clip.id,
+                    status: clip.status, // 'submitted', 'streaming', 'complete', 'failed'
+                    progress: this.getProgressFromStatus(clip.status),
+                    message: this.getStatusMessage(clip.status),
+                    audio_url: clip.audio_url,
+                    title: clip.title,
+                    metadata: clip.metadata,
+                    error: null
+                };
+            } else {
+                throw new Error('No clip data returned from Suno API');
+            }
 
         } catch (error) {
             console.error('Status check error:', error);
@@ -125,25 +132,21 @@ class SunoService {
 
     /**
      * Download the generated song
-     * @param {string} generationId - The generation ID
+     * @param {string} audioUrl - The audio URL to download
      * @returns {Promise<Blob>} Audio file blob
      */
-    async downloadSong(generationId) {
+    async downloadSong(audioUrl) {
         try {
-            const response = await fetch(`${this.baseUrl}/download/${generationId}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
-                    'X-API-Version': '2025-01'
-                }
-            });
-
+            console.log('Downloading song from:', audioUrl);
+            
+            const response = await fetch(audioUrl);
             if (!response.ok) {
-                throw new Error(`Download failed: ${response.status}`);
+                throw new Error(`Download error: ${response.statusText}`);
             }
-
-            return await response.blob();
-
+            
+            const blob = await response.blob();
+            console.log('Downloaded audio blob:', blob.size, 'bytes');
+            return blob;
         } catch (error) {
             console.error('Download error:', error);
             throw error;
@@ -151,54 +154,46 @@ class SunoService {
     }
 
     /**
-     * Get song metadata
-     * @param {string} generationId - The generation ID
-     * @returns {Promise<Object>} Song metadata
+     * Create an audio file from blob for the choreography pipeline
+     * @param {Blob} blob - The audio blob
+     * @param {string} filename - The filename for the audio file
+     * @returns {File} Audio file object
      */
-    async getSongMetadata(generationId) {
+    async createAudioFileFromBlob(blob, filename = 'suno-generated.mp3') {
         try {
-            const response = await fetch(`${this.baseUrl}/metadata/${generationId}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
-                    'X-API-Version': '2025-01'
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`Metadata fetch failed: ${response.status}`);
-            }
-
-            return await response.json();
-
+            // Create a File object from the blob
+            const file = new File([blob], filename, { type: 'audio/mpeg' });
+            console.log('Created audio file:', file.name, file.size, 'bytes');
+            return file;
         } catch (error) {
-            console.error('Metadata fetch error:', error);
+            console.error('Error creating audio file:', error);
             throw error;
         }
     }
 
     /**
      * Poll for generation completion
-     * @param {string} generationId - The generation ID to poll
+     * @param {string} clipId - The clip ID to poll
      * @param {Function} onUpdate - Callback for status updates
      * @param {Function} onComplete - Callback for completion
      * @param {Function} onError - Callback for errors
      */
-    async pollGeneration(generationId, onUpdate, onComplete, onError) {
+    async pollGeneration(clipId, onUpdate, onComplete, onError) {
         const pollInterval = 3000; // Poll every 3 seconds
         const maxPollTime = 300000; // Max 5 minutes
         const startTime = Date.now();
 
         const poll = async () => {
             try {
-                const status = await this.checkGenerationStatus(generationId);
+                const status = await this.checkGenerationStatus(clipId);
                 
                 // Call update callback
                 if (onUpdate) {
                     onUpdate(status);
                 }
 
-                if (status.status === 'completed') {
+                // Check if generation is complete (streaming or complete status means audio is available)
+                if (status.status === 'streaming' || status.status === 'complete') {
                     this.isGenerating = false;
                     if (onComplete) {
                         onComplete(status);
@@ -207,7 +202,7 @@ class SunoService {
                 } else if (status.status === 'failed') {
                     this.isGenerating = false;
                     if (onError) {
-                        onError(new Error(status.error || 'Generation failed'));
+                        onError(new Error('Generation failed'));
                     }
                     return;
                 }
@@ -237,35 +232,44 @@ class SunoService {
     }
 
     /**
-     * Validate generation parameters
-     * @param {Object} params - Parameters to validate
+     * Get progress percentage from status
+     * @param {string} status - The generation status
+     * @returns {number} Progress percentage
      */
-    validateParams(params) {
-        if (!params.prompt || params.prompt.trim().length < 10) {
-            throw new Error('Prompt must be at least 10 characters long');
+    getProgressFromStatus(status) {
+        switch (status) {
+            case 'submitted': return 10;
+            case 'processing': return 50;
+            case 'streaming': return 90;
+            case 'complete': return 100;
+            case 'failed': return 0;
+            default: return 0;
         }
+    }
 
-        if (params.prompt.length > 500) {
-            throw new Error('Prompt must be less than 500 characters');
+    /**
+     * Get human-readable status message
+     * @param {string} status - The generation status
+     * @returns {string} Status message
+     */
+    getStatusMessage(status) {
+        switch (status) {
+            case 'submitted': return 'Song submitted for generation...';
+            case 'processing': return 'Generating your song...';
+            case 'streaming': return 'Song is ready!';
+            case 'complete': return 'Song generation complete!';
+            case 'failed': return 'Song generation failed';
+            default: return 'Processing...';
         }
+    }
 
-        const validStyles = ['pop', 'rock', 'hip-hop', 'electronic', 'jazz', 'classical', 'country', 'reggae'];
-        if (!validStyles.includes(params.style)) {
-            throw new Error('Invalid style selected');
-        }
-
-        const validMoods = ['happy', 'energetic', 'calm', 'melancholic', 'romantic', 'dramatic'];
-        if (!validMoods.includes(params.mood)) {
-            throw new Error('Invalid mood selected');
-        }
-
-        if (params.duration < 30 || params.duration > 300) {
-            throw new Error('Duration must be between 30 and 300 seconds');
-        }
-
-        if (params.tempo < 60 || params.tempo > 200) {
-            throw new Error('Tempo must be between 60 and 200 BPM');
-        }
+    /**
+     * Check if generation is complete
+     * @param {string} status - The generation status
+     * @returns {boolean} Whether generation is complete
+     */
+    isGenerationComplete(status) {
+        return status === 'complete' || status === 'streaming';
     }
 
     /**
@@ -281,7 +285,9 @@ class SunoService {
             { value: 'jazz', label: 'Jazz' },
             { value: 'classical', label: 'Classical' },
             { value: 'country', label: 'Country' },
-            { value: 'reggae', label: 'Reggae' }
+            { value: 'reggae', label: 'Reggae' },
+            { value: 'blues', label: 'Blues' },
+            { value: 'folk', label: 'Folk' }
         ];
     }
 
@@ -296,7 +302,9 @@ class SunoService {
             { value: 'calm', label: 'Calm' },
             { value: 'melancholic', label: 'Melancholic' },
             { value: 'romantic', label: 'Romantic' },
-            { value: 'dramatic', label: 'Dramatic' }
+            { value: 'dramatic', label: 'Dramatic' },
+            { value: 'upbeat', label: 'Upbeat' },
+            { value: 'peaceful', label: 'Peaceful' }
         ];
     }
 
@@ -305,7 +313,7 @@ class SunoService {
      * @returns {boolean} Service availability
      */
     isAvailable() {
-        return !!this.apiKey && this.apiKey !== 'your-suno-api-key';
+        return !!this.API_KEY && this.API_KEY !== 'your-suno-api-key';
     }
 
     /**
@@ -313,7 +321,7 @@ class SunoService {
      * @param {string} apiKey - The API key
      */
     setApiKey(apiKey) {
-        this.apiKey = apiKey;
+        this.API_KEY = apiKey;
     }
 }
 

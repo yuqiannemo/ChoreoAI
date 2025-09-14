@@ -646,19 +646,16 @@ class AIChoreographer {
         }
 
         // Get form values
-        const prompt = document.getElementById('songPrompt').value.trim();
-        const style = document.getElementById('songStyle').value;
-        const mood = document.getElementById('songMood').value;
-        const duration = parseInt(document.getElementById('songDuration').value);
-        const tempo = parseInt(document.getElementById('songTempo').value);
+        const description = document.getElementById('songDescription').value.trim();
+        const genre = document.getElementById('songGenre').value;
 
         // Validate inputs
-        if (!prompt) {
+        if (!description) {
             this.showNotification('Please enter a song description', 'error');
             return;
         }
 
-        if (prompt.length < 10) {
+        if (description.length < 10) {
             this.showNotification('Song description must be at least 10 characters long', 'error');
             return;
         }
@@ -670,11 +667,11 @@ class AIChoreographer {
         try {
             // Generate song with Suno
             const result = await window.sunoService.generateSong({
-                prompt,
-                style,
-                mood,
-                duration,
-                tempo
+                prompt: description,
+                style: genre,
+                mood: 'energetic', // Default mood since we removed the input
+                duration: 120, // Default duration since we removed the input
+                tempo: 120 // Default tempo since we removed the input
             });
 
             console.log('Suno generation started:', result);
@@ -706,13 +703,14 @@ class AIChoreographer {
                 this.updateSunoStatus('Song generated successfully!');
                 
                 try {
-                    // Download the generated song
-                    const audioBlob = await window.sunoService.downloadSong(generationId);
+                    // Download the generated song using the audio_url from status
+                    const audioBlob = await window.sunoService.downloadSong(status.audio_url);
                     
                     // Create a file from the blob
-                    const audioFile = new File([audioBlob], `suno-song-${generationId}.mp3`, {
-                        type: 'audio/mpeg'
-                    });
+                    const audioFile = await window.sunoService.createAudioFileFromBlob(
+                        audioBlob, 
+                        `suno-${status.title || generationId}.mp3`
+                    );
 
                     // Create project with the generated song
                     await this.createProjectFromSunoSong(audioFile, generationId, status);
@@ -740,16 +738,23 @@ class AIChoreographer {
 
     async createProjectFromSunoSong(audioFile, generationId, sunoStatus) {
         try {
-            // Create project data
+            // Create project data with Suno metadata
             const projectData = {
-                title: `Suno Generated Song - ${generationId}`,
+                title: sunoStatus.title || `Suno Generated Song - ${generationId}`,
                 audio_file_name: audioFile.name,
                 audio_file_size: audioFile.size,
                 audio_file_type: audioFile.type,
                 status: 'uploaded',
                 is_suno_generated: true,
                 suno_generation_id: generationId,
-                suno_metadata: sunoStatus.result || {}
+                suno_metadata: {
+                    title: sunoStatus.title,
+                    prompt: sunoStatus.metadata?.gpt_description_prompt,
+                    tags: sunoStatus.metadata?.tags,
+                    style: sunoStatus.metadata?.tags?.split(',')[0]?.trim(),
+                    mood: sunoStatus.metadata?.tags?.split(',')[1]?.trim(),
+                    created_at: sunoStatus.metadata?.created_at
+                }
             };
 
             // Create project in the system
@@ -767,11 +772,53 @@ class AIChoreographer {
                 uploadId: uploadResult.uploadId
             });
 
+            // Add to projects list for the projects page
+            this.addToProjectsList(project);
+
+            // Update UI to show the generated song
+            const uploadArea = document.getElementById('musicUploadArea');
+            const icon = uploadArea.querySelector('.upload-icon i');
+            const title = uploadArea.querySelector('h3');
+            const subtitle = uploadArea.querySelector('p');
+
+            icon.className = 'fas fa-check-circle';
+            title.textContent = sunoStatus.title || audioFile.name;
+            subtitle.textContent = `${(audioFile.size / 1024 / 1024).toFixed(2)} MB - Generated with Suno AI`;
+
+            // Add glow effect
+            uploadArea.classList.add('glow-cyan');
+
             console.log('Project created from Suno song:', project);
 
         } catch (error) {
             console.error('Error creating project from Suno song:', error);
             throw error;
+        }
+    }
+
+    addToProjectsList(project) {
+        try {
+            // Get existing projects
+            const projects = JSON.parse(localStorage.getItem('userProjects') || '[]');
+            
+            // Add new project to the beginning of the list
+            projects.unshift({
+                id: project.id,
+                title: project.title,
+                status: project.status || 'uploaded',
+                created_at: new Date().toISOString(),
+                audio_file_name: project.audio_file_name,
+                duration: 'Unknown', // We could calculate this from the audio file
+                style: project.suno_metadata?.style || 'Generated',
+                is_suno_generated: project.is_suno_generated || false
+            });
+            
+            // Save back to localStorage
+            localStorage.setItem('userProjects', JSON.stringify(projects));
+            
+            console.log('Added project to projects list:', project.title);
+        } catch (error) {
+            console.error('Error adding project to list:', error);
         }
     }
 
