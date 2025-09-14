@@ -13,7 +13,9 @@ class AIChoreographer {
         this.currentSpeed = 1;
         this.currentProject = null;
         this.isAuthenticated = false;
-        
+        this.threeDViewer = null;
+        this.current3DMode = false;
+
         this.init();
     }
 
@@ -26,6 +28,7 @@ class AIChoreographer {
         this.setupGestureHints();
         this.animateOnScroll();
         this.setupSupabaseSubscriptions();
+        this.init3DViewer();
     }
 
     async checkAuthentication() {
@@ -51,57 +54,147 @@ class AIChoreographer {
     }
 
     setupEventListeners() {
-        // Navigation buttons
-        document.getElementById('uploadMusicBtn').addEventListener('click', () => this.showUploadSection('music'));
-        document.getElementById('trySampleBtn').addEventListener('click', () => this.trySample());
-        
-        // Upload tabs
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
+        console.log('Setting up event listeners...');
+
+        // Main navigation buttons
+        const uploadMusicBtn = document.getElementById('uploadMusicBtn');
+        if (uploadMusicBtn) {
+            uploadMusicBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Upload music button clicked');
+                this.showUploadSection('music');
+            });
+        }
+
+        const trySampleBtn = document.getElementById('trySampleBtn');
+        if (trySampleBtn) {
+            trySampleBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Try sample button clicked');
+                this.trySample();
+            });
+        }
+
+        const generateBtn = document.getElementById('generateBtn');
+        if (generateBtn) {
+            generateBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Generate button clicked');
+                this.startGeneration();
+            });
+        }
+
+        const cancelBtn = document.getElementById('cancelBtn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Cancel button clicked');
+                this.cancelGeneration();
+            });
+        }
+
+        const modifyBtn = document.getElementById('modifyBtn');
+        if (modifyBtn) {
+            modifyBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Modify button clicked');
+                this.modifySettings();
+            });
+        }
+
+        const mirrorToggle = document.getElementById('mirrorToggle');
+        if (mirrorToggle) {
+            mirrorToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Mirror toggle clicked');
+                this.toggleMirror();
+            });
+        }
+
+        // View mode toggle buttons
+        const videoViewBtn = document.getElementById('videoViewBtn');
+        if (videoViewBtn) {
+            videoViewBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Video view button clicked');
+                this.switchToVideoView();
+            });
+        }
+
+        const avatarViewBtn = document.getElementById('avatarViewBtn');
+        if (avatarViewBtn) {
+            avatarViewBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Avatar view button clicked');
+                this.switchToAvatarView();
+            });
+        }
+
+        // Tab buttons
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                const tab = e.target.dataset.tab;
+                console.log('Tab clicked:', tab);
+                this.switchTab(tab);
+            });
         });
 
-        // Generate button
-        document.getElementById('generateBtn').addEventListener('click', () => this.startGeneration());
-
-        // Progress controls
-        document.getElementById('cancelBtn').addEventListener('click', () => this.cancelGeneration());
-        document.getElementById('modifyBtn').addEventListener('click', () => this.modifySettings());
-
-        // Studio controls
-        document.getElementById('playBtn').addEventListener('click', () => this.togglePlayback());
-        document.getElementById('rewindBtn').addEventListener('click', () => this.rewind());
-        document.getElementById('forwardBtn').addEventListener('click', () => this.forward());
-        document.getElementById('mirrorToggle').addEventListener('click', () => this.toggleMirror());
+        // Style selection
+        document.querySelectorAll('.style-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const style = e.target.closest('.style-item').dataset.style;
+                console.log('Style selected:', style);
+                this.selectStyle(style);
+            });
+        });
 
         // Speed controls
         document.querySelectorAll('.speed-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.changeSpeed(parseFloat(e.target.dataset.speed)));
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const speed = parseFloat(e.target.dataset.speed);
+                console.log('Speed changed:', speed);
+                this.changeSpeed(speed);
+            });
         });
 
         // Camera presets
         document.querySelectorAll('.preset-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.changeCameraAngle(e.target.dataset.angle));
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const angle = e.target.dataset.angle;
+                console.log('Camera angle changed:', angle);
+                this.changeCameraAngle(angle);
+            });
         });
-
-        // Timeline scrubbing
-        this.setupTimelineScrubbing();
-
 
         // Export buttons
         document.querySelectorAll('.export-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.handleExport(e.target.textContent.trim()));
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const action = e.target.textContent.trim();
+                console.log('Export action:', action);
+                this.handleExport(action);
+            });
         });
 
         // Authentication buttons (will be added dynamically)
         document.addEventListener('click', (e) => {
             if (e.target.id === 'loginBtn') {
+                console.log('Login button clicked');
                 this.showLoginModal();
             } else if (e.target.id === 'signupBtn') {
+                console.log('Signup button clicked');
                 this.showSignupModal();
             } else if (e.target.id === 'logoutBtn') {
+                console.log('Logout button clicked');
                 this.logout();
             }
         });
+
+        console.log('Event listeners setup complete');
     }
 
     setupFileUpload() {
@@ -160,7 +253,7 @@ class AIChoreographer {
         // For now, we'll simulate gesture controls with keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (this.currentSection === 'studio') {
-                switch(e.key) {
+                switch (e.key) {
                     case 'ArrowLeft':
                         e.preventDefault();
                         this.rewind();
@@ -196,6 +289,43 @@ class AIChoreographer {
         });
     }
 
+    handleButtonClick(action) {
+        console.log('Handling button action:', action);
+
+        switch (action) {
+            case 'upload-music':
+                this.showUploadSection('music');
+                break;
+            case 'try-sample':
+                this.trySample();
+                break;
+            case 'start-generation':
+                this.startGeneration();
+                break;
+            case 'cancel-generation':
+                this.cancelGeneration();
+                break;
+            case 'modify-settings':
+                this.modifySettings();
+                break;
+            case 'play-pause':
+                this.togglePlayback();
+                break;
+            case 'rewind':
+                this.rewind();
+                break;
+            case 'forward':
+                this.forward();
+                break;
+            case 'mirror-toggle':
+                this.toggleMirror();
+                break;
+            default:
+                console.warn('Unknown action:', action);
+                break;
+        }
+    }
+
     // Navigation methods
     showUploadSection(type) {
         this.hideAllSections();
@@ -222,16 +352,16 @@ class AIChoreographer {
     async trySample() {
         // Try to use pre-uploaded sample file from Supabase, with fallback
         this.showNotification('Loading sample track...', 'info');
-        
+
         try {
             // First, try to verify the sample file exists in Supabase
             const sampleUrl = 'https://likdbicjuoqqwwrfjial.supabase.co/storage/v1/object/sign/audio-files/samples/rick-astley-sample.mp3?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9iZjk2NDUxYS0zNGFmLTQyNTUtOGVlZC1mNzhhMGZhYjM1MzgiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJhdWRpby1maWxlcy9zYW1wbGVzL3JpY2stYXN0bGV5LXNhbXBsZS5tcDMiLCJpYXQiOjE3NTc4MDcxMzksImV4cCI6MTc4OTM0MzEzOX0._JaN2HA_ds8f8VvIkeKGr1SIxSYP6MFDWQY68DLIhIY';
-            
+
             // Test if the sample file is accessible
             const testResponse = await fetch(sampleUrl, { method: 'HEAD' });
-            
+
             let sampleFileInfo;
-            
+
             if (testResponse.ok) {
                 // Sample file exists in Supabase, use it
                 sampleFileInfo = {
@@ -274,12 +404,12 @@ class AIChoreographer {
             this.currentProject = project;
 
             // Show success message based on source
-            const successMessage = sampleFileInfo.source === 'supabase' 
+            const successMessage = sampleFileInfo.source === 'supabase'
                 ? 'Sample track loaded! Starting generation...'
                 : 'Demo sample loaded! Starting generation...';
-            
+
             this.showNotification(successMessage, 'success');
-            
+
             // Start generation immediately
             setTimeout(() => {
                 this.startGeneration();
@@ -287,11 +417,11 @@ class AIChoreographer {
 
         } catch (error) {
             console.error('Sample loading error:', error);
-            
+
             // Final fallback - create a basic demo project
             try {
                 this.showNotification('Creating demo sample...', 'info');
-                
+
                 const demoProjectData = {
                     title: 'Demo Sample Track',
                     audio_file_name: 'demo-track.mp3',
@@ -306,11 +436,11 @@ class AIChoreographer {
 
                 this.currentProject = project;
                 this.showNotification('Demo sample created! Starting generation...', 'success');
-                
+
                 setTimeout(() => {
                     this.startGeneration();
                 }, 1000);
-                
+
             } catch (fallbackError) {
                 console.error('Fallback error:', fallbackError);
                 this.showNotification('Failed to create sample: ' + fallbackError.message, 'error');
@@ -318,6 +448,35 @@ class AIChoreographer {
         }
     }
 
+    trySample() {
+        // Simulate using a sample track
+        this.showUploadSection('music');
+        this.switchTab('music');
+
+        // Pre-fill with sample settings
+        document.getElementById('genreSelect').value = 'hiphop';
+        document.getElementById('skillLevel').value = 3;
+        document.getElementById('tempoPreference').value = 120;
+
+        // Show success message
+        this.showNotification('Sample track loaded! Ready to generate choreography.', 'success');
+    }
+
+    selectStyle(style) {
+        // Update style selection
+        document.querySelectorAll('.style-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        document.querySelector(`[data-style="${style}"]`).classList.add('selected');
+
+        // Update genre select if upload section is visible
+        if (this.currentSection === 'upload') {
+            document.getElementById('genreSelect').value = style;
+        }
+
+        // Add visual feedback
+        this.showNotification(`${style.charAt(0).toUpperCase() + style.slice(1)} style selected!`, 'info');
+    }
 
     // File upload methods
     handleDragOver(e, element) {
@@ -334,7 +493,7 @@ class AIChoreographer {
         e.preventDefault();
         const element = e.currentTarget;
         element.classList.remove('dragover');
-        
+
         const files = e.dataTransfer.files;
         if (files.length > 0) {
             fileInput.files = files;
@@ -376,12 +535,13 @@ class AIChoreographer {
 
                 this.currentProject = project;
 
-                // Upload file to Supabase Storage
+                // Upload file to backend
                 const uploadResult = await window.choreographyService.uploadAudioFile(file, project.id);
-                
-                // Update project with file path
+
+                // Update project with file path and upload ID
                 await window.choreographyService.updateProject(project.id, {
-                    audio_file_path: uploadResult.path
+                    audio_file_path: uploadResult.path,
+                    uploadId: uploadResult.uploadId
                 });
 
                 // Update UI to show success
@@ -395,7 +555,7 @@ class AIChoreographer {
                 this.showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} file uploaded successfully!`, 'success');
             } catch (error) {
                 console.error('Upload error:', error);
-                
+
                 // Reset UI on error
                 icon.className = 'fas fa-cloud-upload-alt';
                 icon.style.color = 'var(--accent-cyan)';
@@ -409,11 +569,18 @@ class AIChoreographer {
 
     // Generation methods
     async startGeneration() {
-        if (this.isGenerating) return;
+        console.log('Starting generation...');
+        if (this.isGenerating) {
+            console.log('Generation already in progress');
+            return;
+        }
         if (!this.currentProject) {
+            console.log('No current project found');
             this.showNotification('Please upload a file first', 'error');
             return;
         }
+
+        console.log('Current project:', this.currentProject);
 
         this.isGenerating = true;
         this.hideAllSections();
@@ -422,14 +589,26 @@ class AIChoreographer {
         this.scrollToSection('progressSection');
 
         // Start progress simulation immediately
-        this.simulateProgress();
+        this.startRealTimeProgress();
 
         try {
+            console.log('Calling startChoreographyGeneration...');
             // Start AI generation process
-            await window.choreographyService.startChoreographyGeneration(this.currentProject.id, {});
+            await window.choreographyService.startChoreographyGeneration(this.currentProject.id, {
+                dance_style: document.getElementById('genreSelect').value,
+                skill_level: parseInt(document.getElementById('skillLevel').value),
+                tempo_preference: parseInt(document.getElementById('tempoPreference').value)
+            });
 
-            // Subscribe to real-time updates
-            this.subscribeToProjectUpdates();
+            console.log('Generation started successfully');
+            // For demo service, we'll use polling instead of real-time updates
+            if (window.choreographyService.constructor.name === 'SimpleDemoService') {
+                console.log('Using demo service - starting polling for updates');
+                this.startPollingForUpdates();
+            } else {
+                // Subscribe to real-time updates for full Supabase service
+                this.subscribeToProjectUpdates();
+            }
         } catch (error) {
             console.error('Generation error:', error);
             this.showNotification('Failed to start generation: ' + error.message, 'error');
@@ -437,49 +616,90 @@ class AIChoreographer {
         }
     }
 
-    simulateProgress() {
-        this.currentProgress = 0;
-        const progressFill = document.getElementById('progressFill');
-        const progressText = document.getElementById('progressText');
-        
+    startRealTimeProgress() {
+        const statusElement = document.getElementById('progressStatus');
+        const detailsElement = document.getElementById('progressDetails');
+
         // Clear any existing interval
         if (this.progressInterval) {
             clearInterval(this.progressInterval);
         }
-        
-        this.progressInterval = setInterval(() => {
-            this.currentProgress += Math.random() * 2 + 1; // 1-3% per update
-            if (this.currentProgress > 100) {
-                this.currentProgress = 100;
-                clearInterval(this.progressInterval);
-                this.completeGeneration();
+
+        // Update status messages based on actual backend status
+        this.progressInterval = setInterval(async () => {
+            try {
+                const project = JSON.parse(localStorage.getItem('currentProject') || '{}');
+                const generationId = project.generation_id;
+
+                if (!generationId) return;
+
+                const response = await fetch(`http://localhost:5001/api/status/${generationId}`);
+                if (response.ok) {
+                    const status = await response.json();
+
+                    // Update status text based on backend message
+                    if (statusElement) {
+                        statusElement.textContent = this.getStatusDisplay(status.status, status.progress);
+                    }
+
+                    if (detailsElement) {
+                        detailsElement.textContent = status.message || 'Processing your request...';
+                    }
+
+                    // Check if completed
+                    if (status.status === 'completed') {
+                        clearInterval(this.progressInterval);
+                        // Load video immediately upon completion
+                        setTimeout(() => {
+                            this.loadGeneratedVideo();
+                        }, 500); // Small delay to ensure backend has finished writing
+                        this.completeGeneration();
+                    } else if (status.status === 'error') {
+                        clearInterval(this.progressInterval);
+                        this.showNotification('Generation failed: ' + status.message, 'error');
+                        this.isGenerating = false;
+                    }
+                }
+            } catch (error) {
+                console.error('Progress polling error:', error);
             }
-            
-            if (progressFill && progressText) {
-                progressFill.style.width = `${this.currentProgress}%`;
-                progressText.textContent = `${Math.round(this.currentProgress)}%`;
-            }
-        }, 300); // Update every 300ms
+        }, 2000); // Update every 2 seconds
+    }
+
+    getStatusDisplay(status, progress) {
+        const statusMessages = {
+            'queued': '🎵 Getting Ready...',
+            'processing': '🤖 AI is Creating Magic...',
+            'completed': '✅ Dance Created Successfully!',
+            'error': '❌ Something went wrong'
+        };
+
+        return statusMessages[status] || '🔄 Processing...';
     }
 
     completeGeneration() {
         clearInterval(this.progressInterval);
         this.isGenerating = false;
-        
-        setTimeout(() => {
-            this.hideAllSections();
-            document.getElementById('studioSection').style.display = 'block';
-            document.getElementById('exportSection').style.display = 'block';
-            this.currentSection = 'studio';
-            this.scrollToSection('studioSection');
-            
-            this.showNotification('Choreography generated successfully!', 'success');
-        }, 1000);
+
+        // Immediately transition and load video
+        this.hideAllSections();
+        document.getElementById('studioSection').style.display = 'block';
+        document.getElementById('exportSection').style.display = 'block';
+        this.currentSection = 'studio';
+        this.scrollToSection('studioSection');
+
+        // Load the video immediately
+        this.loadGeneratedVideo();
+
+        this.showNotification('Choreography generated successfully!', 'success');
     }
 
     cancelGeneration() {
         if (this.progressInterval) {
             clearInterval(this.progressInterval);
+        }
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
         }
         this.isGenerating = false;
         this.showUploadSection('music');
@@ -496,7 +716,7 @@ class AIChoreographer {
         this.isPlaying = !this.isPlaying;
         const playBtn = document.getElementById('playBtn');
         const icon = playBtn.querySelector('i');
-        
+
         if (this.isPlaying) {
             icon.className = 'fas fa-pause';
             this.startPlayback();
@@ -546,7 +766,7 @@ class AIChoreographer {
         const timelineProgress = document.getElementById('timelineProgress');
         const timelineScrubber = document.getElementById('timelineScrubber');
         const currentTimeEl = document.getElementById('currentTime');
-        
+
         timelineProgress.style.width = `${progress}%`;
         timelineScrubber.style.left = `${progress}%`;
         currentTimeEl.textContent = this.formatTime(this.currentTime);
@@ -560,13 +780,13 @@ class AIChoreographer {
 
     changeSpeed(speed) {
         this.currentSpeed = speed;
-        
+
         // Update speed buttons
         document.querySelectorAll('.speed-btn').forEach(btn => {
             btn.classList.remove('active');
         });
         document.querySelector(`[data-speed="${speed}"]`).classList.add('active');
-        
+
         this.showNotification(`Speed changed to ${speed}x`, 'info');
     }
 
@@ -574,7 +794,7 @@ class AIChoreographer {
         this.mirrorMode = !this.mirrorMode;
         const mirrorBtn = document.getElementById('mirrorToggle');
         const avatar3d = document.querySelector('.avatar-3d');
-        
+
         if (this.mirrorMode) {
             mirrorBtn.classList.add('active');
             avatar3d.style.transform = 'scaleX(-1)';
@@ -582,8 +802,114 @@ class AIChoreographer {
             mirrorBtn.classList.remove('active');
             avatar3d.style.transform = 'scaleX(1)';
         }
-        
+
         this.showNotification(`Mirror mode ${this.mirrorMode ? 'enabled' : 'disabled'}`, 'info');
+    }
+
+    switchToVideoView() {
+        console.log('Switching to video view');
+        const videoContainer = document.getElementById('videoContainer');
+        const viewerContainer = document.getElementById('viewerContainer');
+        const videoViewBtn = document.getElementById('videoViewBtn');
+        const avatarViewBtn = document.getElementById('avatarViewBtn');
+
+        if (videoContainer && viewerContainer) {
+            videoContainer.style.display = 'flex';
+            viewerContainer.style.display = 'none';
+
+            // Update button states
+            videoViewBtn.classList.add('active');
+            avatarViewBtn.classList.remove('active');
+
+            this.showNotification('Switched to video view', 'info');
+        }
+    }
+
+    switchToAvatarView() {
+        console.log('Switching to avatar view');
+        const videoContainer = document.getElementById('videoContainer');
+        const viewerContainer = document.getElementById('viewerContainer');
+        const videoViewBtn = document.getElementById('videoViewBtn');
+        const avatarViewBtn = document.getElementById('avatarViewBtn');
+
+        if (videoContainer && viewerContainer) {
+            videoContainer.style.display = 'none';
+            viewerContainer.style.display = 'flex';
+
+            // Update button states
+            videoViewBtn.classList.remove('active');
+            avatarViewBtn.classList.add('active');
+
+            this.showNotification('Switched to 3D avatar view', 'info');
+        }
+    }
+
+    async loadGeneratedVideo() {
+        console.log('Loading generated video...');
+        if (!this.currentProject) {
+            console.error('No project available');
+            return;
+        }
+
+        try {
+            const videoElement = document.getElementById('generatedVideo');
+            const videoSource = document.getElementById('videoSource');
+
+            if (videoElement && videoSource) {
+                // Get the generation ID from localStorage (updated by demo service)
+                const project = JSON.parse(localStorage.getItem('currentProject') || '{}');
+                const generationId = project.generation_id;
+
+                if (!generationId) {
+                    console.error('No generation ID available in project:', project);
+                    this.showNotification('No generation ID found. Please generate again.', 'error');
+                    return;
+                }
+
+                // Set video source to backend download endpoint using generation_id
+                // First try to get the actual filename from the status
+                const statusResponse = await fetch(`http://localhost:5001/api/status/${generationId}`);
+
+                let videoUrl;
+                if (statusResponse.ok) {
+                    const status = await statusResponse.json();
+                    if (status.status === 'completed' && status.result && status.result.video_filename) {
+                        // Use direct file serving for better compatibility
+                        videoUrl = `http://localhost:5001/outputs/${status.result.video_filename}`;
+                    } else {
+                        // Fallback to download endpoint
+                        videoUrl = `http://localhost:5001/api/download/${generationId}/video`;
+                    }
+                } else {
+                    // Fallback to download endpoint
+                    videoUrl = `http://localhost:5001/api/download/${generationId}/video`;
+                }
+
+                console.log('Setting video URL:', videoUrl);
+
+                videoSource.src = videoUrl;
+                videoElement.load(); // Reload the video element
+
+                // Handle video load events
+                videoElement.onloadstart = () => {
+                    console.log('Video load started');
+                    this.showNotification('Loading video...', 'info');
+                };
+
+                videoElement.oncanplay = () => {
+                    console.log('Video can play');
+                    this.showNotification('Video loaded successfully!', 'success');
+                };
+
+                videoElement.onerror = (e) => {
+                    console.error('Video load error:', e);
+                    this.showNotification('Failed to load video. Check browser console for details.', 'error');
+                };
+            }
+        } catch (error) {
+            console.error('Error loading video:', error);
+            this.showNotification('Failed to load video: ' + error.message, 'error');
+        }
     }
 
     changeCameraAngle(angle) {
@@ -592,30 +918,35 @@ class AIChoreographer {
             btn.classList.remove('active');
         });
         document.querySelector(`[data-angle="${angle}"]`).classList.add('active');
-        
-        // Apply camera transformation
-        const avatar3d = document.querySelector('.avatar-3d');
-        switch(angle) {
-            case 'front':
-                avatar3d.style.transform = 'rotateY(0deg)';
-                break;
-            case 'side':
-                avatar3d.style.transform = 'rotateY(90deg)';
-                break;
-            case '3d':
-                avatar3d.style.transform = 'rotateY(45deg) rotateX(10deg)';
-                break;
-            case 'top':
-                avatar3d.style.transform = 'rotateX(90deg)';
-                break;
+
+        if (angle === '3d') {
+            // Switch to 3D view
+            this.switch3DMode(true);
+        } else {
+            // Switch to 2D view
+            this.switch3DMode(false);
+
+            // Apply camera transformation for 2D view
+            const avatar3d = document.querySelector('.avatar-3d');
+            switch (angle) {
+                case 'front':
+                    avatar3d.style.transform = 'rotateY(0deg)';
+                    break;
+                case 'side':
+                    avatar3d.style.transform = 'rotateY(90deg)';
+                    break;
+                case 'top':
+                    avatar3d.style.transform = 'rotateX(90deg)';
+                    break;
+            }
         }
-        
+
         this.showNotification(`Camera angle: ${angle}`, 'info');
     }
 
     // Export methods
     handleExport(action) {
-        switch(action) {
+        switch (action) {
             case 'Download Video':
                 this.downloadVideo();
                 break;
@@ -629,11 +960,36 @@ class AIChoreographer {
     }
 
     downloadVideo() {
-        this.showNotification('Preparing video download...', 'info');
-        // Simulate download
-        setTimeout(() => {
-            this.showNotification('Video downloaded successfully!', 'success');
-        }, 2000);
+        console.log('Starting video download...');
+        try {
+            const project = JSON.parse(localStorage.getItem('currentProject') || '{}');
+            const generationId = project.generation_id;
+
+            if (!generationId) {
+                this.showNotification('No generation ID found. Cannot download video.', 'error');
+                return;
+            }
+
+            this.showNotification('Preparing video download...', 'info');
+
+            // Create download link
+            const downloadUrl = `http://localhost:5001/api/download/${generationId}/video`;
+            console.log('Download URL:', downloadUrl);
+
+            // Create temporary link and trigger download
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = `dance_video_${generationId}.mp4`;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            this.showNotification('Video download started!', 'success');
+        } catch (error) {
+            console.error('Download error:', error);
+            this.showNotification('Failed to download video: ' + error.message, 'error');
+        }
     }
 
     exportGLB() {
@@ -724,7 +1080,7 @@ class AIChoreographer {
     }
 
     getNotificationIcon(type) {
-        switch(type) {
+        switch (type) {
             case 'success': return 'check-circle';
             case 'error': return 'exclamation-circle';
             case 'info': return 'info-circle';
@@ -734,11 +1090,63 @@ class AIChoreographer {
 
     // Supabase integration methods
     setupSupabaseSubscriptions() {
-        // Subscribe to auth state changes
-        window.choreographyService.supabase.auth.onAuthStateChange((event, session) => {
-            this.isAuthenticated = !!session;
-            this.updateAuthUI();
-        });
+        // Only set up Supabase subscriptions if using real Supabase service
+        if (window.choreographyService && window.choreographyService.supabase) {
+            // Subscribe to auth state changes
+            window.choreographyService.supabase.auth.onAuthStateChange((event, session) => {
+                this.isAuthenticated = !!session;
+                this.updateAuthUI();
+            });
+        } else {
+            console.log('Using SimpleDemoService - skipping Supabase subscriptions');
+        }
+    }
+
+    startPollingForUpdates() {
+        if (!this.currentProject) return;
+
+        console.log('Starting polling for project updates...');
+
+        // Clear any existing polling
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+        }
+
+        this.pollingInterval = setInterval(async () => {
+            try {
+                // Get updated project data from localStorage (where demo service stores it)
+                const stored = localStorage.getItem('currentProject');
+                if (stored) {
+                    const project = JSON.parse(stored);
+                    console.log('Polling update:', project.status, project.processing_progress);
+
+                    // Update progress if available
+                    if (project.processing_progress !== undefined) {
+                        this.currentProgress = project.processing_progress;
+                        const progressFill = document.getElementById('progressFill');
+                        const progressText = document.getElementById('progressText');
+
+                        if (progressFill && progressText) {
+                            progressFill.style.width = `${this.currentProgress}%`;
+                            progressText.textContent = `${this.currentProgress}%`;
+                        }
+                    }
+
+                    // Check if generation is complete
+                    if (project.status === 'completed') {
+                        console.log('Generation completed!');
+                        clearInterval(this.pollingInterval);
+                        this.completeGeneration(project);
+                    } else if (project.status === 'failed') {
+                        console.log('Generation failed:', project.error_message);
+                        clearInterval(this.pollingInterval);
+                        this.handleGenerationError(project.error_message || 'Unknown error');
+                    }
+                }
+            } catch (error) {
+                console.error('Polling error:', error);
+            }
+        }, 3000); // Poll every 3 seconds
     }
 
     subscribeToProjectUpdates() {
@@ -757,7 +1165,7 @@ class AIChoreographer {
         // Update progress bar
         const progressFill = document.getElementById('progressFill');
         const progressText = document.getElementById('progressText');
-        
+
         if (progressFill && progressText) {
             progressFill.style.width = `${project.processing_progress}%`;
             progressText.textContent = `${project.processing_progress}%`;
@@ -773,8 +1181,11 @@ class AIChoreographer {
 
     async completeGeneration(project) {
         clearInterval(this.progressInterval);
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+        }
         this.isGenerating = false;
-        
+
         // Unsubscribe from updates
         if (this.projectSubscription) {
             this.projectSubscription.unsubscribe();
@@ -782,22 +1193,31 @@ class AIChoreographer {
 
         // Update current project
         this.currentProject = project;
-        
+
         setTimeout(() => {
             this.hideAllSections();
             document.getElementById('studioSection').style.display = 'block';
             document.getElementById('exportSection').style.display = 'block';
             this.currentSection = 'studio';
             this.scrollToSection('studioSection');
-            
+
+            // Load the generated video
+            this.loadGeneratedVideo();
+
+            // Start with video view by default
+            this.switchToVideoView();
+
             this.showNotification('Choreography generated successfully!', 'success');
         }, 1000);
     }
 
     handleGenerationError(errorMessage) {
         clearInterval(this.progressInterval);
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+        }
         this.isGenerating = false;
-        
+
         if (this.projectSubscription) {
             this.projectSubscription.unsubscribe();
         }
@@ -948,11 +1368,64 @@ class AIChoreographer {
             this.showNotification('Logout failed: ' + error.message, 'error');
         }
     }
+
+    // 3D Viewer Methods
+    init3DViewer() {
+        if (window.ThreeDViewer) {
+            try {
+                this.threeDViewer = new ThreeDViewer('threejs-canvas');
+                this.threeDViewer.loadDefaultAvatar();
+                console.log('3D Viewer initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize 3D Viewer:', error);
+            }
+        } else {
+            console.warn('ThreeDViewer not available');
+        }
+    }
+
+    switch3DMode(enable) {
+        this.current3DMode = enable;
+
+        const canvas = document.getElementById('threejs-canvas');
+        const avatar2D = document.getElementById('avatar-container-2d');
+        const viewerControls = document.getElementById('viewer-controls');
+
+        if (enable && this.threeDViewer) {
+            // Show 3D viewer
+            this.threeDViewer.show();
+            if (avatar2D) avatar2D.style.display = 'none';
+
+            // Sync playback state
+            if (this.isPlaying) {
+                this.threeDViewer.play();
+            } else {
+                this.threeDViewer.pause();
+            }
+        } else {
+            // Show 2D viewer
+            if (this.threeDViewer) this.threeDViewer.hide();
+            if (avatar2D) avatar2D.style.display = 'block';
+        }
+    }
+
+    loadFBXAvatar(fbxPath) {
+        if (this.threeDViewer) {
+            this.threeDViewer.loadAvatar(fbxPath)
+                .then(() => {
+                    this.showNotification('3D Avatar loaded successfully!', 'success');
+                })
+                .catch((error) => {
+                    console.error('Failed to load FBX avatar:', error);
+                    this.showNotification('Failed to load 3D avatar', 'error');
+                });
+        }
+    }
 }
 
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new AIChoreographer();
+    window.choreographyApp = new AIChoreographer();
 });
 
 // Add some additional CSS for notifications

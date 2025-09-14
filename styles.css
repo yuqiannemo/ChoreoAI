@@ -669,30 +669,41 @@ body {
 
 .progress-visual {
     margin-bottom: 3rem;
+    text-align: center;
 }
 
-.progress-bar {
-    width: 100%;
-    height: 8px;
-    background: var(--border-color);
-    border-radius: 4px;
-    overflow: hidden;
-    margin-bottom: 1rem;
+.loading-spinner {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2rem;
 }
 
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent-pink), var(--accent-cyan));
-    width: 0%;
-    transition: width 0.3s ease;
-    border-radius: 4px;
-    box-shadow: 0 0 20px var(--hover-glow);
+.spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid var(--border-color);
+    border-top: 4px solid var(--accent-cyan);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    box-shadow: 0 0 20px var(--cyan-glow);
 }
 
-.progress-text {
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.progress-status {
     font-size: 1.5rem;
     font-weight: 600;
     color: var(--accent-cyan);
+    margin-bottom: 0.5rem;
+}
+
+.progress-details {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
 }
 
 .progress-animation {
@@ -783,6 +794,41 @@ body {
     justify-content: center;
     position: relative;
     overflow: hidden;
+}
+
+/* Video Container Styles */
+.video-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-dark);
+}
+
+.video-container video {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* View Mode Toggle */
+.view-mode-toggle {
+    display: flex;
+    gap: 0.5rem;
+    margin-right: 1rem;
+}
+
+.view-mode-toggle .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.view-mode-toggle .btn.active {
+    background: var(--accent-cyan);
+    color: var(--bg-dark);
+    border-color: var(--accent-cyan);
 }
 
 .avatar-container-3d {
@@ -1344,6 +1390,93 @@ html {
     color: var(--accent-pink);
 }
 
+/* 3D Viewer Styles */
+.viewer-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#threejs-canvas {
+    width: 100%;
+    height: 500px;
+    border-radius: 12px;
+    background: var(--bg-card);
+}
+
+.viewer-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(30, 30, 30, 0.9);
+    padding: 1rem;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+}
+
+.viewer-controls .control-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.viewer-controls .control-group:last-child {
+    margin-bottom: 0;
+}
+
+.viewer-controls label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    min-width: 60px;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    background: var(--primary-purple);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.btn-sm:hover {
+    background: var(--accent-pink);
+    transform: translateY(-1px);
+}
+
+#avatarOpacity {
+    width: 80px;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border-color);
+    outline: none;
+}
+
+#avatarOpacity::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent-cyan);
+    cursor: pointer;
+}
+
+#avatarOpacity::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent-cyan);
+    cursor: pointer;
+    border: none;
+}
+
 /* Responsive auth modal */
 @media (max-width: 480px) {
     .auth-modal-overlay {
@@ -1357,5 +1490,16 @@ html {
     .auth-modal-header,
     .auth-modal-body {
         padding: 1.5rem;
+    }
+    
+    .viewer-controls {
+        position: relative;
+        top: auto;
+        right: auto;
+        margin-top: 1rem;
+    }
+    
+    #threejs-canvas {
+        height: 300px;
     }
 }

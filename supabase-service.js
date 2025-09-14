@@ -373,35 +373,166 @@ class ChoreographyService {
 
     // AI API integration helpers
     async startChoreographyGeneration(projectId, settings) {
+        if (!this.currentUser) {
+            throw new Error('User must be authenticated to generate choreography')
+        }
+
+        // Get project details including audio file path
+        const { data: project, error: projectError } = await supabase
+            .from(TABLES.PROJECTS)
+            .select('*')
+            .eq('id', projectId)
+            .eq('user_id', this.currentUser.id)
+            .single()
+
+        if (projectError) {
+            throw projectError
+        }
+
         // Update project status to processing
         await this.updateProject(projectId, {
             status: 'processing',
             processing_progress: 0,
-            ...settings
+            generation_started_at: new Date().toISOString(),
+            generation_parameters: settings
         })
 
-        // Here you would call your AI API
-        // For now, we'll simulate the process
-        return this.simulateGeneration(projectId)
-    }
+        try {
+            // Download audio file from Supabase storage
+            const { data: audioBlob, error: downloadError } = await supabase.storage
+                .from(STORAGE_BUCKETS.AUDIO)
+                .download(project.audio_file_path)
 
-    async simulateGeneration(projectId) {
-        // Simulate progress updates
-        for (let progress = 0; progress <= 100; progress += 10) {
-            await new Promise(resolve => setTimeout(resolve, 1000))
-            
-            await this.updateProject(projectId, {
-                processing_progress: progress
+            if (downloadError) {
+                throw downloadError
+            }
+
+            // Upload to dance generation API
+            const formData = new FormData()
+            formData.append('audio', audioBlob, project.audio_file_name)
+
+            const uploadResponse = await fetch('http://localhost:5000/api/upload', {
+                method: 'POST',
+                body: formData
             })
 
-            if (progress === 100) {
-                // Mark as completed
+            if (!uploadResponse.ok) {
+                const errorData = await uploadResponse.json()
+                throw new Error(errorData.error || 'Failed to upload audio to generation service')
+            }
+
+            const uploadResult = await uploadResponse.json()
+
+            // Start generation
+            const generateResponse = await fetch('http://localhost:5000/api/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    upload_id: uploadResult.upload_id,
+                    feature_type: 'jukebox',
+                    generate_fbx: true,
+                    dance_style: settings.dance_style || 'freestyle',
+                    skill_level: settings.skill_level || 3
+                })
+            })
+
+            if (!generateResponse.ok) {
+                const errorData = await generateResponse.json()
+                throw new Error(errorData.error || 'Failed to start dance generation')
+            }
+
+            const generateResult = await generateResponse.json()
+
+            // Update project with generation ID
+            await this.updateProject(projectId, {
+                generation_id: generateResult.generation_id,
+                api_upload_id: uploadResult.upload_id
+            })
+
+            // Start polling for progress
+            this.pollGenerationProgress(projectId, generateResult.generation_id)
+
+            return { 
+                projectId, 
+                generationId: generateResult.generation_id,
+                status: 'processing' 
+            }
+
+        } catch (error) {
+            console.error('Generation error:', error)
+            // Update project status to failed
+            await this.updateProject(projectId, {
+                status: 'failed',
+                error_message: error.message
+            })
+            throw error
+        }
+    }
+
+    async pollGenerationProgress(projectId, generationId) {
+        const pollInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`http://localhost:5000/api/status/${generationId}`)
+                if (!response.ok) {
+                    throw new Error('Failed to get generation status')
+                }
+
+                const status = await response.json()
+                
+                // Update project with current progress
                 await this.updateProject(projectId, {
-                    status: 'completed',
-                    completed_at: new Date().toISOString()
+                    processing_progress: status.progress || 0
+                })
+
+                if (status.status === 'completed') {
+                    clearInterval(pollInterval)
+                    
+                    // Download and save generated video
+                    const videoResponse = await fetch(`http://localhost:5000/api/download/${generationId}/video`)
+                    if (videoResponse.ok) {
+                        const videoBlob = await videoResponse.blob()
+                        
+                        // Upload video to Supabase storage
+                        const videoPath = `${this.currentUser.id}/${projectId}_generated.mp4`
+                        const { data: uploadData, error: uploadError } = await supabase.storage
+                            .from(STORAGE_BUCKETS.VIDEOS)
+                            .upload(videoPath, videoBlob, {
+                                cacheControl: '3600',
+                                upsert: true
+                            })
+
+                        if (!uploadError) {
+                            const { data: urlData } = supabase.storage
+                                .from(STORAGE_BUCKETS.VIDEOS)
+                                .getPublicUrl(videoPath)
+                            
+                            await this.updateProject(projectId, {
+                                status: 'completed',
+                                completed_at: new Date().toISOString(),
+                                processing_progress: 100,
+                                video_path: videoPath,
+                                video_url: urlData.publicUrl
+                            })
+                        }
+                    }
+                } else if (status.status === 'error') {
+                    clearInterval(pollInterval)
+                    await this.updateProject(projectId, {
+                        status: 'failed',
+                        error_message: status.message || 'Generation failed'
+                    })
+                }
+            } catch (error) {
+                console.error('Polling error:', error)
+                clearInterval(pollInterval)
+                await this.updateProject(projectId, {
+                    status: 'failed',
+                    error_message: 'Failed to track generation progress'
                 })
             }
-        }
+        }, 2000) // Poll every 2 seconds
     }
 
     // Utility methods
