@@ -25,6 +25,7 @@ class AIChoreographer {
         this.setupFileUpload();
         this.setupProgressSimulation();
         this.setupStudioControls();
+        this.setupTimelineScrubbing();
         this.setupGestureHints();
         this.animateOnScroll();
         this.setupSupabaseSubscriptions();
@@ -160,6 +161,34 @@ class AIChoreographer {
             });
         });
 
+        // Playback controls
+        const playBtn = document.getElementById('playBtn');
+        if (playBtn) {
+            playBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Play button clicked');
+                this.togglePlayback();
+            });
+        }
+
+        const rewindBtn = document.getElementById('rewindBtn');
+        if (rewindBtn) {
+            rewindBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Rewind button clicked');
+                this.rewind();
+            });
+        }
+
+        const forwardBtn = document.getElementById('forwardBtn');
+        if (forwardBtn) {
+            forwardBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Forward button clicked');
+                this.forward();
+            });
+        }
+
         // Camera presets
         document.querySelectorAll('.preset-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -222,20 +251,24 @@ class AIChoreographer {
         const scrubber = document.getElementById('timelineScrubber');
         let isDragging = false;
 
-        timeline.addEventListener('click', (e) => {
-            const rect = timeline.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const percentage = clickX / rect.width;
-            this.seekTo(percentage);
-        });
+        if (timeline) {
+            timeline.addEventListener('click', (e) => {
+                const rect = timeline.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const percentage = clickX / rect.width;
+                this.seekTo(percentage);
+            });
+        }
 
-        scrubber.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            e.preventDefault();
-        });
+        if (scrubber) {
+            scrubber.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                e.preventDefault();
+            });
+        }
 
         document.addEventListener('mousemove', (e) => {
-            if (isDragging) {
+            if (isDragging && timeline) {
                 const rect = timeline.getBoundingClientRect();
                 const mouseX = e.clientX - rect.left;
                 const percentage = Math.max(0, Math.min(1, mouseX / rect.width));
@@ -723,63 +756,86 @@ class AIChoreographer {
 
     // Studio control methods
     togglePlayback() {
-        this.isPlaying = !this.isPlaying;
+        const videoElement = document.getElementById('generatedVideo');
         const playBtn = document.getElementById('playBtn');
         const icon = playBtn.querySelector('i');
 
-        if (this.isPlaying) {
+        if (!videoElement) {
+            console.warn('Video element not found');
+            return;
+        }
+
+        if (videoElement.paused) {
+            videoElement.play();
             icon.className = 'fas fa-pause';
-            this.startPlayback();
+            this.isPlaying = true;
         } else {
+            videoElement.pause();
             icon.className = 'fas fa-play';
-            this.pausePlayback();
+            this.isPlaying = false;
         }
     }
 
-    startPlayback() {
-        this.playbackInterval = setInterval(() => {
-            this.currentTime += 1 / this.currentSpeed;
-            if (this.currentTime >= this.totalTime) {
-                this.currentTime = this.totalTime;
-                this.pausePlayback();
-            }
-            this.updateTimeline();
-        }, 1000);
-    }
-
-    pausePlayback() {
-        if (this.playbackInterval) {
-            clearInterval(this.playbackInterval);
-            this.playbackInterval = null;
-        }
-    }
 
     rewind() {
-        this.currentTime = Math.max(0, this.currentTime - 10);
-        this.updateTimeline();
+        const videoElement = document.getElementById('generatedVideo');
+        if (!videoElement) {
+            console.warn('Video element not found');
+            return;
+        }
+
+        const newTime = Math.max(0, videoElement.currentTime - 10);
+        videoElement.currentTime = newTime;
         this.showNotification('Rewound 10 seconds', 'info');
     }
 
     forward() {
-        this.currentTime = Math.min(this.totalTime, this.currentTime + 10);
-        this.updateTimeline();
+        const videoElement = document.getElementById('generatedVideo');
+        if (!videoElement) {
+            console.warn('Video element not found');
+            return;
+        }
+
+        const newTime = Math.min(videoElement.duration, videoElement.currentTime + 10);
+        videoElement.currentTime = newTime;
         this.showNotification('Forwarded 10 seconds', 'info');
     }
 
     seekTo(percentage) {
-        this.currentTime = percentage * this.totalTime;
-        this.updateTimeline();
+        const videoElement = document.getElementById('generatedVideo');
+        if (!videoElement || !videoElement.duration) {
+            console.warn('Video element not found or not loaded');
+            return;
+        }
+
+        const newTime = percentage * videoElement.duration;
+        videoElement.currentTime = newTime;
     }
 
     updateTimeline() {
-        const progress = (this.currentTime / this.totalTime) * 100;
+        const videoElement = document.getElementById('generatedVideo');
+        if (!videoElement || !videoElement.duration) {
+            return;
+        }
+
+        const progress = (videoElement.currentTime / videoElement.duration) * 100;
         const timelineProgress = document.getElementById('timelineProgress');
         const timelineScrubber = document.getElementById('timelineScrubber');
         const currentTimeEl = document.getElementById('currentTime');
+        const totalTimeEl = document.getElementById('totalTime');
 
-        timelineProgress.style.width = `${progress}%`;
-        timelineScrubber.style.left = `${progress}%`;
-        currentTimeEl.textContent = this.formatTime(this.currentTime);
+        if (timelineProgress) {
+            timelineProgress.style.width = `${progress}%`;
+        }
+        if (timelineScrubber) {
+            timelineScrubber.style.left = `${progress}%`;
+        }
+        if (currentTimeEl) {
+            currentTimeEl.textContent = this.formatTime(videoElement.currentTime);
+        }
+        if (totalTimeEl) {
+            totalTimeEl.textContent = this.formatTime(videoElement.duration);
+        }
     }
 
     formatTime(seconds) {
@@ -789,7 +845,14 @@ class AIChoreographer {
     }
 
     changeSpeed(speed) {
+        const videoElement = document.getElementById('generatedVideo');
+        if (!videoElement) {
+            console.warn('Video element not found');
+            return;
+        }
+
         this.currentSpeed = speed;
+        videoElement.playbackRate = speed;
 
         // Update speed buttons
         document.querySelectorAll('.speed-btn').forEach(btn => {
@@ -915,6 +978,36 @@ class AIChoreographer {
                     console.error('Video load error:', e);
                     this.showNotification('Failed to load video. Check browser console for details.', 'error');
                 };
+
+                // Add event listeners for video controls
+                videoElement.addEventListener('timeupdate', () => {
+                    this.updateTimeline();
+                });
+
+                videoElement.addEventListener('play', () => {
+                    this.isPlaying = true;
+                    const playBtn = document.getElementById('playBtn');
+                    const icon = playBtn.querySelector('i');
+                    icon.className = 'fas fa-pause';
+                });
+
+                videoElement.addEventListener('pause', () => {
+                    this.isPlaying = false;
+                    const playBtn = document.getElementById('playBtn');
+                    const icon = playBtn.querySelector('i');
+                    icon.className = 'fas fa-play';
+                });
+
+                videoElement.addEventListener('ended', () => {
+                    this.isPlaying = false;
+                    const playBtn = document.getElementById('playBtn');
+                    const icon = playBtn.querySelector('i');
+                    icon.className = 'fas fa-play';
+                });
+
+                videoElement.addEventListener('loadedmetadata', () => {
+                    this.updateTimeline();
+                });
             }
         } catch (error) {
             console.error('Error loading video:', error);
