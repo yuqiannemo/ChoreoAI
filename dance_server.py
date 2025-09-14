@@ -150,12 +150,12 @@ def generate_dance_async(generation_id, audio_file_path, params):
             os.chdir(original_cwd)
         
         generation_status[generation_id]['progress'] = 85
-        generation_status[generation_id]['message'] = 'Converting to 3D avatar...'
+        generation_status[generation_id]['message'] = 'Finalizing dance video...'
         
-        # Convert motion to FBX if requested
+        # Skip FBX conversion for now (can be enabled later if needed)
         fbx_path = None
-        if params.get('generate_fbx', True) and result.get('motion_path'):
-            fbx_path = convert_motion_to_fbx(result['motion_path'], generation_id)
+        # if params.get('generate_fbx', False) and result.get('motion_path'):
+        #     fbx_path = convert_motion_to_fbx(result['motion_path'], generation_id)
         
         generation_status[generation_id]['progress'] = 100
         generation_status[generation_id]['status'] = 'completed'

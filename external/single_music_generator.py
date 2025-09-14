@@ -53,7 +53,7 @@ def generate_dance_from_single_file(audio_file_path, output_dir=None, motion_sav
     
     # Setup feature extraction function
     feature_func = juke_extract if feature_type == "jukebox" else baseline_extract
-    sample_length = 120  # 2 minutes default
+    sample_length = 60  # Reduced to 1 minute for faster generation
     sample_size = int(sample_length / 2.5) - 1
     
     # Create temporary directory for audio slicing
@@ -152,14 +152,20 @@ def generate_dance_from_single_file(audio_file_path, output_dir=None, motion_sav
         # Clean up
         torch.cuda.empty_cache()
         
-        # Construct result paths
-        video_path = os.path.join(output_dir, f"{output_filename}.mp4")
-        motion_path = os.path.join(motion_save_dir, f"{output_filename}.pkl")
+        # Construct result paths - look for files containing the generation_id
+        # The EDGE model creates files with complex names, so we need to search for them
+        import glob
+        
+        video_files = glob.glob(os.path.join(output_dir, f"*{generation_id}*.mp4"))
+        motion_files = glob.glob(os.path.join(motion_save_dir, f"*{generation_id}*.pkl"))
+        
+        video_path = video_files[0] if video_files else None
+        motion_path = motion_files[0] if motion_files else None
         
         result = {
             "generation_id": generation_id,
-            "video_path": video_path if os.path.exists(video_path) else None,
-            "motion_path": motion_path if os.path.exists(motion_path) else None,
+            "video_path": video_path,
+            "motion_path": motion_path,
             "input_file": audio_file_path,
             "output_dir": output_dir,
             "motion_save_dir": motion_save_dir

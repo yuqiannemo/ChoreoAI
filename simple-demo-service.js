@@ -59,7 +59,7 @@ class SimpleDemoService {
             created_at: new Date().toISOString(),
             status: 'uploaded'
         };
-        
+
         // Store in localStorage for demo purposes
         localStorage.setItem('currentProject', JSON.stringify(project));
         return { data: project, error: null };
@@ -86,7 +86,7 @@ class SimpleDemoService {
             console.log('Starting choreography generation for project:', projectId);
             const project = JSON.parse(localStorage.getItem('currentProject') || '{}');
             console.log('Retrieved project from localStorage:', project);
-            
+
             if (!project.uploadId) {
                 console.error('No upload ID found in project:', project);
                 throw new Error('No upload ID found. Please upload a file first.');
@@ -128,7 +128,7 @@ class SimpleDemoService {
 
             const result = await response.json();
             console.log('Generation started successfully:', result);
-            
+
             // Store generation ID
             await this.updateProject(projectId, {
                 generation_id: result.generation_id
@@ -162,7 +162,7 @@ class SimpleDemoService {
                 }
 
                 const status = await response.json();
-                
+
                 // Update project with current progress
                 await this.updateProject(projectId, {
                     processing_progress: status.progress || 0,
@@ -176,7 +176,7 @@ class SimpleDemoService {
 
                 if (status.status === 'completed') {
                     clearInterval(pollInterval);
-                    
+
                     await this.updateProject(projectId, {
                         status: 'completed',
                         completed_at: new Date().toISOString(),
@@ -203,13 +203,13 @@ class SimpleDemoService {
                     error_message: 'Failed to track generation progress'
                 });
             }
-        }, 2000); // Poll every 2 seconds
+        }, 5000); // Poll every 5 seconds (reduced frequency)
     }
 
     // Mock subscription function (since we don't have real-time updates)
     subscribeToProjectUpdates(projectId, callback) {
         console.log('Setting up project updates subscription for:', projectId);
-        
+
         // Return a mock subscription object
         return {
             unsubscribe: () => {

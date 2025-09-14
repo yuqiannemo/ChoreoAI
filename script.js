@@ -593,12 +593,23 @@ class AIChoreographer {
 
         try {
             console.log('Calling startChoreographyGeneration...');
+
+            // Get form values with fallbacks for missing elements
+            const genreSelect = document.getElementById('genreSelect');
+            const skillLevelSelect = document.getElementById('skillLevel');
+            const tempoSelect = document.getElementById('tempoPreference');
+
+            const settings = {
+                dance_style: genreSelect ? genreSelect.value : 'hiphop',
+                skill_level: skillLevelSelect ? parseInt(skillLevelSelect.value) : 3,
+                tempo_preference: tempoSelect ? parseInt(tempoSelect.value) : 120,
+                generate_fbx: false  // Disable FBX generation for faster processing
+            };
+
+            console.log('Generation settings:', settings);
+
             // Start AI generation process
-            await window.choreographyService.startChoreographyGeneration(this.currentProject.id, {
-                dance_style: document.getElementById('genreSelect').value,
-                skill_level: parseInt(document.getElementById('skillLevel').value),
-                tempo_preference: parseInt(document.getElementById('tempoPreference').value)
-            });
+            await window.choreographyService.startChoreographyGeneration(this.currentProject.id, settings);
 
             console.log('Generation started successfully');
             // For demo service, we'll use polling instead of real-time updates
@@ -620,50 +631,49 @@ class AIChoreographer {
         const statusElement = document.getElementById('progressStatus');
         const detailsElement = document.getElementById('progressDetails');
 
+        // Set initial status
+        if (statusElement) {
+            statusElement.textContent = '🎵 Getting Ready...';
+        }
+        if (detailsElement) {
+            detailsElement.textContent = 'Preparing your dance generation...';
+        }
+
         // Clear any existing interval
         if (this.progressInterval) {
             clearInterval(this.progressInterval);
         }
 
-        // Update status messages based on actual backend status
-        this.progressInterval = setInterval(async () => {
-            try {
-                const project = JSON.parse(localStorage.getItem('currentProject') || '{}');
-                const generationId = project.generation_id;
+        // Note: Actual polling is handled by SimpleDemoService.pollGenerationProgress()
+        // This function now only sets up the initial UI state
+        console.log('Real-time progress monitoring started (handled by SimpleDemoService)');
+    }
 
-                if (!generationId) return;
+    // This method will be called by SimpleDemoService via window.choreographer.updateGenerationProgress()
+    updateGenerationProgress(status) {
+        const statusElement = document.getElementById('progressStatus');
+        const detailsElement = document.getElementById('progressDetails');
 
-                const response = await fetch(`http://localhost:5001/api/status/${generationId}`);
-                if (response.ok) {
-                    const status = await response.json();
+        // Update status text based on backend message
+        if (statusElement) {
+            statusElement.textContent = this.getStatusDisplay(status.status, status.progress);
+        }
 
-                    // Update status text based on backend message
-                    if (statusElement) {
-                        statusElement.textContent = this.getStatusDisplay(status.status, status.progress);
-                    }
+        if (detailsElement) {
+            detailsElement.textContent = status.message || 'Processing your request...';
+        }
 
-                    if (detailsElement) {
-                        detailsElement.textContent = status.message || 'Processing your request...';
-                    }
-
-                    // Check if completed
-                    if (status.status === 'completed') {
-                        clearInterval(this.progressInterval);
-                        // Load video immediately upon completion
-                        setTimeout(() => {
-                            this.loadGeneratedVideo();
-                        }, 500); // Small delay to ensure backend has finished writing
-                        this.completeGeneration();
-                    } else if (status.status === 'error') {
-                        clearInterval(this.progressInterval);
-                        this.showNotification('Generation failed: ' + status.message, 'error');
-                        this.isGenerating = false;
-                    }
-                }
-            } catch (error) {
-                console.error('Progress polling error:', error);
-            }
-        }, 2000); // Update every 2 seconds
+        // Check if completed
+        if (status.status === 'completed') {
+            // Load video immediately upon completion
+            setTimeout(() => {
+                this.loadGeneratedVideo();
+            }, 500); // Small delay to ensure backend has finished writing
+            this.completeGeneration();
+        } else if (status.status === 'error') {
+            this.showNotification('Generation failed: ' + status.message, 'error');
+            this.isGenerating = false;
+        }
     }
 
     getStatusDisplay(status, progress) {
