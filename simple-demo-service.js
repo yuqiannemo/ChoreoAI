@@ -4,7 +4,30 @@
 class SimpleDemoService {
     constructor() {
         this.currentUser = { id: 'demo-user', email: 'demo@example.com' };
-        this.backendUrl = 'http://localhost:5001';
+
+        // Environment-aware backend URL
+        this.backendUrl = this.getBackendUrl();
+    }
+
+    getBackendUrl() {
+        // Check if we're in development (localhost) or production (vercel)
+        const hostname = window.location.hostname;
+
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            // Local development
+            return 'http://localhost:5001';
+        } else {
+            // Production - you can replace this with your ngrok URL or deployed backend URL
+            const deployedBackendUrl = localStorage.getItem('BACKEND_URL') || 'https://535a9730f0f4.ngrok-free.app';
+            return deployedBackendUrl;
+        }
+    }
+
+    // Method to update backend URL (useful for setting ngrok URL)
+    setBackendUrl(url) {
+        this.backendUrl = url;
+        localStorage.setItem('BACKEND_URL', url);
+        console.log('Backend URL updated to:', url);
     }
 
     // Mock authentication methods
