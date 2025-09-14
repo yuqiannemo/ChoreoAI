@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Email - ChoreoAI</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Supabase CDN -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="supabase-service.js"></script>
+    <style>
+        .verification-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 100%);
+            padding: 2rem;
+        }
+        
+        .verification-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 3rem;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .verification-icon {
+            font-size: 4rem;
+            margin-bottom: 2rem;
+        }
+        
+        .verification-icon.success {
+            color: var(--accent-cyan);
+        }
+        
+        .verification-icon.error {
+            color: #ff4444;
+        }
+        
+        .verification-icon.loading {
+            color: var(--accent-pink);
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .verification-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+        
+        .verification-message {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .verification-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: var(--accent-pink);
+            color: white;
+            box-shadow: 0 4px 15px var(--hover-glow);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px var(--hover-glow);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 2px solid var(--border-color);
+        }
+        
+        .btn-outline:hover {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+            transform: translateY(-2px);
+        }
+        
+        .error-details {
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid rgba(255, 68, 68, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #ff4444;
+            text-align: left;
+        }
+        
+        .countdown {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 1rem;
+        }
+        
+        @media (max-width: 480px) {
+            .verification-card {
+                padding: 2rem;
+                margin: 1rem;
+            }
+            
+            .verification-title {
+                font-size: 1.5rem;
+            }
+            
+            .verification-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="verification-container">
+        <div class="verification-card">
+            <div class="verification-icon loading" id="verificationIcon">
+                <i class="fas fa-spinner"></i>
+            </div>
+            
+            <h1 class="verification-title" id="verificationTitle">
+                Verifying Your Email...
+            </h1>
+            
+            <p class="verification-message" id="verificationMessage">
+                Please wait while we verify your email address.
+            </p>
+            
+            <div class="verification-actions" id="verificationActions" style="display: none;">
+                <a href="index.html" class="btn btn-primary" id="goToAppBtn">
+                    <i class="fas fa-arrow-right"></i>
+                    Go to ChoreoAI
+                </a>
+                <a href="index.html" class="btn btn-outline" id="resendEmailBtn" style="display: none;">
+                    <i class="fas fa-envelope"></i>
+                    Resend Verification Email
+                </a>
+            </div>
+            
+            <div class="countdown" id="countdown" style="display: none;">
+                Redirecting in <span id="countdownNumber">5</span> seconds...
+            </div>
+            
+            <div class="error-details" id="errorDetails" style="display: none;">
+                <strong>Error Details:</strong>
+                <div id="errorText"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class EmailVerification {
+            constructor() {
+                this.init();
+            }
+
+            async init() {
+                // Get URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                const token = urlParams.get('token');
+                const type = urlParams.get('type');
+                const email = urlParams.get('email');
+
+                if (!token || type !== 'signup') {
+                    this.showError('Invalid verification link', 'The verification link is invalid or expired.');
+                    return;
+                }
+
+                try {
+                    // Verify the email with Supabase
+                    const { data, error } = await window.choreographyService.supabase.auth.verifyOtp({
+                        token_hash: token,
+                        type: 'signup'
+                    });
+
+                    if (error) {
+                        throw error;
+                    }
+
+                    // Success!
+                    this.showSuccess(email);
+                } catch (error) {
+                    console.error('Verification error:', error);
+                    this.showError('Verification Failed', error.message);
+                }
+            }
+
+            showSuccess(email) {
+                const icon = document.getElementById('verificationIcon');
+                const title = document.getElementById('verificationTitle');
+                const message = document.getElementById('verificationMessage');
+                const actions = document.getElementById('verificationActions');
+                const countdown = document.getElementById('countdown');
+
+                // Update UI
+                icon.className = 'verification-icon success';
+                icon.innerHTML = '<i class="fas fa-check-circle"></i>';
+                title.textContent = 'Email Verified!';
+                message.textContent = `Your email ${email} has been successfully verified. You can now use all features of ChoreoAI.`;
+                
+                actions.style.display = 'flex';
+                countdown.style.display = 'block';
+
+                // Start countdown
+                this.startCountdown();
+            }
+
+            showError(title, message) {
+                const icon = document.getElementById('verificationIcon');
+                const titleEl = document.getElementById('verificationTitle');
+                const messageEl = document.getElementById('verificationMessage');
+                const actions = document.getElementById('verificationActions');
+                const errorDetails = document.getElementById('errorDetails');
+                const errorText = document.getElementById('errorText');
+                const resendBtn = document.getElementById('resendEmailBtn');
+
+                // Update UI
+                icon.className = 'verification-icon error';
+                icon.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
+                titleEl.textContent = title;
+                messageEl.textContent = 'There was a problem verifying your email address.';
+                
+                errorDetails.style.display = 'block';
+                errorText.textContent = message;
+                
+                actions.style.display = 'flex';
+                resendBtn.style.display = 'inline-flex';
+
+                // Add resend functionality
+                resendBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.resendVerification();
+                });
+            }
+
+            startCountdown() {
+                let count = 5;
+                const countdownNumber = document.getElementById('countdownNumber');
+                const goToAppBtn = document.getElementById('goToAppBtn');
+
+                const timer = setInterval(() => {
+                    countdownNumber.textContent = count;
+                    count--;
+
+                    if (count < 0) {
+                        clearInterval(timer);
+                        window.location.href = 'index.html';
+                    }
+                }, 1000);
+
+                // Allow manual navigation
+                goToAppBtn.addEventListener('click', () => {
+                    clearInterval(timer);
+                });
+            }
+
+            async resendVerification() {
+                const resendBtn = document.getElementById('resendEmailBtn');
+                const originalText = resendBtn.innerHTML;
+                
+                resendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+                resendBtn.disabled = true;
+
+                try {
+                    // Get email from URL or prompt user
+                    const urlParams = new URLSearchParams(window.location.search);
+                    let email = urlParams.get('email');
+                    
+                    if (!email) {
+                        email = prompt('Please enter your email address:');
+                        if (!email) return;
+                    }
+
+                    const { error } = await window.choreographyService.supabase.auth.resend({
+                        type: 'signup',
+                        email: email
+                    });
+
+                    if (error) throw error;
+
+                    alert('Verification email sent! Please check your inbox.');
+                } catch (error) {
+                    console.error('Resend error:', error);
+                    alert('Failed to resend verification email: ' + error.message);
+                } finally {
+                    resendBtn.innerHTML = originalText;
+                    resendBtn.disabled = false;
+                }
+            }
+        }
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new EmailVerification();
+        });
+    </script>
+</body>
+</html>

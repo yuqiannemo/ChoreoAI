@@ -13,6 +13,19 @@
     <script src="supabase-service.js"></script>
     <!-- Main App Script -->
     <script src="script.js"></script>
+    <script>
+        // Check if this is an email verification redirect
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const type = urlParams.get('type');
+            
+            if (token && type === 'signup') {
+                // Redirect to verification page
+                window.location.href = `verify-email.html?${window.location.search.substring(1)}`;
+            }
+        });
+    </script>
 </head>
 <body>
     <!-- Header -->
@@ -38,28 +51,9 @@
                     <span class="gradient-text">with AI</span>
                 </h1>
                 <p class="hero-subtitle">
-                    Upload your music and watch as our AI choreographer creates beautiful dance routines tailored to your style and skill level.
+                    Upload your music and watch as our AI choreographer creates beautiful dance routines automatically.
                 </p>
                 
-                <!-- Style Showcase -->
-                <div class="style-showcase">
-                    <div class="style-item" data-style="hiphop">
-                        <i class="fas fa-headphones"></i>
-                        <span>Hip Hop</span>
-                    </div>
-                    <div class="style-item" data-style="ballet">
-                        <i class="fas fa-balance-scale"></i>
-                        <span>Ballet</span>
-                    </div>
-                    <div class="style-item" data-style="house">
-                        <i class="fas fa-fire"></i>
-                        <span>House</span>
-                    </div>
-                    <div class="style-item" data-style="contemporary">
-                        <i class="fas fa-wind"></i>
-                        <span>Contemporary</span>
-                    </div>
-                </div>
 
                 <!-- Action Buttons -->
                 <div class="hero-actions">
@@ -119,41 +113,6 @@
                             </div>
                         </div>
 
-                        <div class="settings-panel">
-                            <div class="setting-group">
-                                <label for="genreSelect">Dance Style</label>
-                                <select id="genreSelect" class="select-input">
-                                    <option value="hiphop">Hip Hop</option>
-                                    <option value="ballet">Ballet</option>
-                                    <option value="house">House</option>
-                                    <option value="contemporary">Contemporary</option>
-                                    <option value="jazz">Jazz</option>
-                                    <option value="popping">Popping</option>
-                                </select>
-                            </div>
-
-                            <div class="setting-group">
-                                <label for="skillLevel">Skill Level</label>
-                                <div class="slider-container">
-                                    <input type="range" id="skillLevel" min="1" max="5" value="3" class="slider">
-                                    <div class="slider-labels">
-                                        <span>Beginner</span>
-                                        <span>Advanced</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="setting-group">
-                                <label for="tempoPreference">Tempo Preference</label>
-                                <div class="slider-container">
-                                    <input type="range" id="tempoPreference" min="60" max="180" value="120" class="slider">
-                                    <div class="slider-labels">
-                                        <span>Slow</span>
-                                        <span>Fast</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                 </div>

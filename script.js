@@ -86,10 +86,6 @@ class AIChoreographer {
         // Timeline scrubbing
         this.setupTimelineScrubbing();
 
-        // Style showcase
-        document.querySelectorAll('.style-item').forEach(item => {
-            item.addEventListener('click', (e) => this.selectStyle(e.currentTarget.dataset.style));
-        });
 
         // Export buttons
         document.querySelectorAll('.export-btn').forEach(btn => {
@@ -223,35 +219,105 @@ class AIChoreographer {
         document.getElementById(`${tabName}Tab`).classList.add('active');
     }
 
-    trySample() {
-        // Simulate using a sample track
-        this.showUploadSection('music');
-        this.switchTab('music');
+    async trySample() {
+        // Try to use pre-uploaded sample file from Supabase, with fallback
+        this.showNotification('Loading sample track...', 'info');
         
-        // Pre-fill with sample settings
-        document.getElementById('genreSelect').value = 'hiphop';
-        document.getElementById('skillLevel').value = 3;
-        document.getElementById('tempoPreference').value = 120;
-        
-        // Show success message
-        this.showNotification('Sample track loaded! Ready to generate choreography.', 'success');
-    }
+        try {
+            // First, try to verify the sample file exists in Supabase
+            const sampleUrl = 'https://likdbicjuoqqwwrfjial.supabase.co/storage/v1/object/sign/audio-files/samples/rick-astley-sample.mp3?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9iZjk2NDUxYS0zNGFmLTQyNTUtOGVlZC1mNzhhMGZhYjM1MzgiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJhdWRpby1maWxlcy9zYW1wbGVzL3JpY2stYXN0bGV5LXNhbXBsZS5tcDMiLCJpYXQiOjE3NTc4MDcxMzksImV4cCI6MTc4OTM0MzEzOX0._JaN2HA_ds8f8VvIkeKGr1SIxSYP6MFDWQY68DLIhIY';
+            
+            // Test if the sample file is accessible
+            const testResponse = await fetch(sampleUrl, { method: 'HEAD' });
+            
+            let sampleFileInfo;
+            
+            if (testResponse.ok) {
+                // Sample file exists in Supabase, use it
+                sampleFileInfo = {
+                    name: 'Rick Astley - Never Gonna Give You Up.mp3',
+                    size: 3.2 * 1024 * 1024, // 3.2 MB
+                    type: 'audio/mpeg',
+                    path: 'samples/rick-astley-sample.mp3',
+                    url: sampleUrl,
+                    source: 'supabase'
+                };
+                console.log('Using Supabase sample file');
+            } else {
+                // Fallback to mock sample
+                sampleFileInfo = {
+                    name: 'Sample Track (Demo)',
+                    size: 3.2 * 1024 * 1024, // 3.2 MB
+                    type: 'audio/mpeg',
+                    path: 'demo/sample-track.mp3',
+                    url: null,
+                    source: 'demo'
+                };
+                console.log('Using demo sample (Supabase file not found)');
+            }
 
-    selectStyle(style) {
-        // Update style selection
-        document.querySelectorAll('.style-item').forEach(item => {
-            item.classList.remove('selected');
-        });
-        document.querySelector(`[data-style="${style}"]`).classList.add('selected');
+            // Create a sample project
+            const projectData = {
+                title: sampleFileInfo.name,
+                audio_file_name: sampleFileInfo.name,
+                audio_file_size: sampleFileInfo.size,
+                audio_file_type: sampleFileInfo.type,
+                audio_file_path: sampleFileInfo.path,
+                audio_file_url: sampleFileInfo.url,
+                status: 'uploaded',
+                is_sample: 1
+            };
 
-        // Update genre select if upload section is visible
-        if (this.currentSection === 'upload') {
-            document.getElementById('genreSelect').value = style;
+            const { data: project, error: projectError } = await window.choreographyService.createProject(projectData);
+            if (projectError) throw projectError;
+
+            this.currentProject = project;
+
+            // Show success message based on source
+            const successMessage = sampleFileInfo.source === 'supabase' 
+                ? 'Sample track loaded! Starting generation...'
+                : 'Demo sample loaded! Starting generation...';
+            
+            this.showNotification(successMessage, 'success');
+            
+            // Start generation immediately
+            setTimeout(() => {
+                this.startGeneration();
+            }, 1000);
+
+        } catch (error) {
+            console.error('Sample loading error:', error);
+            
+            // Final fallback - create a basic demo project
+            try {
+                this.showNotification('Creating demo sample...', 'info');
+                
+                const demoProjectData = {
+                    title: 'Demo Sample Track',
+                    audio_file_name: 'demo-track.mp3',
+                    audio_file_size: 2.5 * 1024 * 1024,
+                    audio_file_type: 'audio/mpeg',
+                    status: 'uploaded',
+                    is_sample: 1
+                };
+
+                const { data: project, error: projectError } = await window.choreographyService.createProject(demoProjectData);
+                if (projectError) throw projectError;
+
+                this.currentProject = project;
+                this.showNotification('Demo sample created! Starting generation...', 'success');
+                
+                setTimeout(() => {
+                    this.startGeneration();
+                }, 1000);
+                
+            } catch (fallbackError) {
+                console.error('Fallback error:', fallbackError);
+                this.showNotification('Failed to create sample: ' + fallbackError.message, 'error');
+            }
         }
-
-        // Add visual feedback
-        this.showNotification(`${style.charAt(0).toUpperCase() + style.slice(1)} style selected!`, 'info');
     }
+
 
     // File upload methods
     handleDragOver(e, element) {
@@ -302,9 +368,6 @@ class AIChoreographer {
                     audio_file_name: file.name,
                     audio_file_size: file.size,
                     audio_file_type: file.type,
-                    dance_style: document.getElementById('genreSelect').value,
-                    skill_level: parseInt(document.getElementById('skillLevel').value),
-                    tempo_preference: parseInt(document.getElementById('tempoPreference').value),
                     status: 'uploaded'
                 };
 
@@ -363,11 +426,7 @@ class AIChoreographer {
 
         try {
             // Start AI generation process
-            await window.choreographyService.startChoreographyGeneration(this.currentProject.id, {
-                dance_style: document.getElementById('genreSelect').value,
-                skill_level: parseInt(document.getElementById('skillLevel').value),
-                tempo_preference: parseInt(document.getElementById('tempoPreference').value)
-            });
+            await window.choreographyService.startChoreographyGeneration(this.currentProject.id, {});
 
             // Subscribe to real-time updates
             this.subscribeToProjectUpdates();
@@ -868,7 +927,7 @@ class AIChoreographer {
             } else {
                 const { error } = await window.choreographyService.signUp(email, password, fullName);
                 if (error) throw error;
-                this.showNotification('Account created! Please check your email to verify.', 'success');
+                this.showNotification('Account created! Please check your email and click the verification link to activate your account.', 'success');
             }
             this.closeAuthModal();
             await this.checkAuthentication();

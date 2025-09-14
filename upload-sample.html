@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Sample to Supabase</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .container {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background: #28a745;
+        }
+        .error {
+            background: #dc3545;
+        }
+        .info {
+            background: #17a2b8;
+        }
+        .url-display {
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Upload Sample File to Supabase</h1>
+    
+    <div class="container">
+        <h2>Step 1: Upload Sample File</h2>
+        <p>This will upload the Rick Astley sample file to your Supabase storage.</p>
+        <button id="uploadBtn" onclick="uploadSample()">Upload Sample File</button>
+        <div id="uploadStatus"></div>
+    </div>
+
+    <div class="container">
+        <h2>Step 2: Test Sample File</h2>
+        <p>Test if the uploaded sample file is accessible.</p>
+        <button id="testBtn" onclick="testSample()" disabled>Test Sample File</button>
+        <div id="testStatus"></div>
+    </div>
+
+    <div class="container">
+        <h2>Step 3: Sample File URL</h2>
+        <p>Use this URL in your application:</p>
+        <div id="sampleUrl" class="url-display">URL will appear here after upload</div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://likdbicjuoqqwwrfjial.supabase.co'
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxpa2RiaWNqdW9xcXd3cmZqaWFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODU5MzIsImV4cCI6MjA3MzM2MTkzMn0.T9IGw2rSxAK-3IE1dfDbjqosT91mUscO_yPJZMNguT4'
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey)
+        let sampleUrl = ''
+
+        async function uploadSample() {
+            const uploadBtn = document.getElementById('uploadBtn')
+            const uploadStatus = document.getElementById('uploadStatus')
+            const testBtn = document.getElementById('testBtn')
+            const sampleUrlDiv = document.getElementById('sampleUrl')
+            
+            uploadBtn.disabled = true
+            uploadBtn.textContent = 'Uploading...'
+            uploadStatus.innerHTML = '<div class="status info">Starting upload...</div>'
+            
+            try {
+                // Try to fetch the sample file
+                const response = await fetch('./sample/Rick Astley - Never Gonna Give You Up (Official Music Video) 4.mp3')
+                if (!response.ok) {
+                    throw new Error('Could not fetch sample file. Make sure you are running this through a web server.')
+                }
+                
+                const audioBlob = await response.blob()
+                console.log('Sample file fetched, size:', audioBlob.size)
+                
+                // Create a File object
+                const sampleFile = new File([audioBlob], 'rick-astley-sample.mp3', {
+                    type: 'audio/mpeg',
+                    lastModified: Date.now()
+                })
+                
+                // Upload to Supabase Storage
+                const filePath = 'samples/rick-astley-sample.mp3'
+                
+                const { data, error } = await supabase.storage
+                    .from('audio-files')
+                    .upload(filePath, sampleFile, {
+                        cacheControl: '3600',
+                        upsert: true // Allow overwriting if it exists
+                    })
+                
+                if (error) {
+                    throw error
+                }
+                
+                // Get the public URL
+                const { data: urlData } = supabase.storage
+                    .from('audio-files')
+                    .getPublicUrl(filePath)
+                
+                sampleUrl = urlData.publicUrl
+                
+                uploadStatus.innerHTML = '<div class="status success">✅ Sample file uploaded successfully!</div>'
+                sampleUrlDiv.textContent = sampleUrl
+                testBtn.disabled = false
+                
+                console.log('Sample file uploaded successfully!')
+                console.log('File path:', filePath)
+                console.log('Public URL:', sampleUrl)
+                
+            } catch (error) {
+                console.error('Error uploading sample file:', error)
+                uploadStatus.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`
+            } finally {
+                uploadBtn.disabled = false
+                uploadBtn.textContent = 'Upload Sample File'
+            }
+        }
+
+        async function testSample() {
+            const testBtn = document.getElementById('testBtn')
+            const testStatus = document.getElementById('testStatus')
+            
+            testBtn.disabled = true
+            testBtn.textContent = 'Testing...'
+            testStatus.innerHTML = '<div class="status info">Testing sample file...</div>'
+            
+            try {
+                const response = await fetch(sampleUrl)
+                if (response.ok) {
+                    testStatus.innerHTML = '<div class="status success">✅ Sample file is accessible!</div>'
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+                }
+            } catch (error) {
+                testStatus.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`
+            } finally {
+                testBtn.disabled = false
+                testBtn.textContent = 'Test Sample File'
+            }
+        }
+    </script>
+</body>
+</html>
