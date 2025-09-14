@@ -1560,3 +1560,55 @@ const notificationStyles = `
 const styleSheet = document.createElement('style');
 styleSheet.textContent = notificationStyles;
 document.head.appendChild(styleSheet);
+
+// Backend Configuration Functions
+function toggleBackendConfig() {
+    const configPanel = document.getElementById('backendConfig');
+    const currentDisplay = configPanel.style.display;
+    configPanel.style.display = currentDisplay === 'none' ? 'block' : 'none';
+
+    if (configPanel.style.display === 'block') {
+        // Show current backend URL
+        const currentUrl = window.choreographyService?.backendUrl || 'http://localhost:5001';
+        document.getElementById('backendUrlInput').value = currentUrl;
+    }
+}
+
+function updateBackendUrl() {
+    const newUrl = document.getElementById('backendUrlInput').value.trim();
+    const statusDiv = document.getElementById('configStatus');
+
+    if (!newUrl) {
+        statusDiv.innerHTML = '<span style="color: red;">Please enter a valid URL</span>';
+        return;
+    }
+
+    if (window.choreographyService) {
+        window.choreographyService.setBackendUrl(newUrl);
+        statusDiv.innerHTML = '<span style="color: green;">Backend URL updated successfully!</span>';
+    }
+}
+
+async function testBackend() {
+    const statusDiv = document.getElementById('configStatus');
+    const url = document.getElementById('backendUrlInput').value.trim() || window.choreographyService?.backendUrl;
+
+    if (!url) {
+        statusDiv.innerHTML = '<span style="color: red;">No backend URL specified</span>';
+        return;
+    }
+
+    statusDiv.innerHTML = '<span style="color: blue;">Testing connection...</span>';
+
+    try {
+        const response = await fetch(`${url}/api/health`);
+        if (response.ok) {
+            const data = await response.json();
+            statusDiv.innerHTML = `<span style="color: green;">✅ Connected successfully! Status: ${data.status}</span>`;
+        } else {
+            statusDiv.innerHTML = `<span style="color: red;">❌ Connection failed (${response.status})</span>`;
+        }
+    } catch (error) {
+        statusDiv.innerHTML = `<span style="color: red;">❌ Connection failed: ${error.message}</span>`;
+    }
+}

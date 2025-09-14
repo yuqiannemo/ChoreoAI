@@ -48,7 +48,20 @@
             <nav class="nav">
                 <a href="#projects" class="nav-link">Projects</a>
                 <a href="#profile" class="nav-link">Profile</a>
+                <button class="btn btn-outline" id="configBtn" onclick="toggleBackendConfig()">⚙️</button>
             </nav>
+
+            <!-- Backend Configuration Panel -->
+            <div class="backend-config" id="backendConfig" style="display: none;">
+                <div class="config-panel">
+                    <h3>Backend Configuration</h3>
+                    <p>For deployed version, enter your ngrok URL:</p>
+                    <input type="url" id="backendUrlInput" placeholder="https://your-ngrok-url.ngrok.io" />
+                    <button class="btn btn-primary" onclick="updateBackendUrl()">Update</button>
+                    <button class="btn btn-secondary" onclick="testBackend()">Test Connection</button>
+                    <div id="configStatus"></div>
+                </div>
+            </div>
         </div>
     </header>
 
