@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: choreoai-backend
+    env: python
+    plan: standard  # Use a plan that supports needed CPU/GPU (adjust manually if GPU beta)
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      # (Optional) install system deps if needed via apt (Render supports apt via build image customization)
+    startCommand: gunicorn wsgi:app --workers=1 --threads=4 --timeout=900
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10
+      - key: FRONTEND_ORIGIN
+        value: https://choreo-ai.vercel.app
+      - key: FLASK_DEBUG
+        value: "0"
+    autoDeploy: true
+    healthCheckPath: /api/health

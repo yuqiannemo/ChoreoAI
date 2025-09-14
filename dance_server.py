@@ -388,17 +388,29 @@ def serve_output_file(filename):
         return jsonify({'error': 'File not found'}), 404
 
 if __name__ == '__main__':
-    # Check if running in virtual environment
+    # Render / production friendly startup
     venv_path = os.path.join('external', '.venv')
     if os.path.exists(venv_path):
-        print(f"Make sure to activate virtual environment: source {venv_path}/bin/activate")
-    
-    print("Starting Dance Generation Backend Server...")
-    print("API will be available at http://localhost:5001")
+        print(f"(Note) Virtual environment detected at: {venv_path}")
+
+    port = int(os.getenv('PORT', '5001'))  # Render provides PORT env var
+    frontend_origin = os.getenv('FRONTEND_ORIGIN')
+    if frontend_origin:
+        try:
+            from flask_cors import CORS as _CORS
+            _CORS(app, resources={r"/api/*": {"origins": [frontend_origin]}}, supports_credentials=True)
+            print(f"CORS restricted to origin: {frontend_origin}")
+        except Exception as _e:
+            print(f"Could not tighten CORS: {_e}")
+
+    print("Starting Dance Generation Backend Server (production-aware)...")
+    print(f"Listening on 0.0.0.0:{port}")
     print("\nAvailable endpoints:")
     print("POST /api/upload - Upload music file")
     print("POST /api/generate - Start dance generation")
     print("GET  /api/status/<id> - Check generation status")
     print("GET  /api/download/<id>/<type> - Download generated files")
+    print("GET  /api/health - Health check")
     
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    # In container / Render this will be replaced by gunicorn, but keep for local fallback
+    app.run(host='0.0.0.0', port=port, debug=os.getenv('FLASK_DEBUG','0')=='1')

@@ -18,7 +18,9 @@ class SimpleDemoService {
             return 'http://localhost:5001';
         } else {
             // Production - you can replace this with your ngrok URL or deployed backend URL
-            const deployedBackendUrl = localStorage.getItem('BACKEND_URL') || 'https://535a9730f0f4.ngrok-free.app';
+            // Set a stable Render backend URL once deployed. This placeholder should be
+            // updated to the actual Render service hostname (e.g. https://choreoai-backend.onrender.com).
+            const deployedBackendUrl = localStorage.getItem('BACKEND_URL') || 'https://choreoai-backend.onrender.com';
             return deployedBackendUrl;
         }
     }
@@ -152,7 +154,7 @@ class SimpleDemoService {
                     upload_id: project.uploadId,
                     dance_style: settings.dance_style || 'hiphop',
                     skill_level: settings.skill_level || 3,
-                    generate_fbx: true
+                    // FBX generation de-scoped; flag removed
                 })
             });
 
