@@ -13,11 +13,8 @@ class SunoService {
     /**
      * Generate a song using Suno AI
      * @param {Object} params - Song generation parameters
-     * @param {string} params.prompt - Description of the song to generate
-     * @param {string} params.style - Music style (pop, rock, hip-hop, etc.)
-     * @param {string} params.mood - Song mood (happy, energetic, calm, etc.)
-     * @param {number} params.duration - Duration in seconds (30-300)
-     * @param {number} params.tempo - Tempo in BPM (60-200)
+     * @param {string} params.topic - Topic/description of the song to generate
+     * @param {string} params.tags - Tags/genre for the song (comma-separated)
      * @returns {Promise<Object>} Generation result
      */
     async generateSong(params) {
@@ -32,8 +29,8 @@ class SunoService {
             
             // Create the request body based on the notebook example
             const requestBody = {
-                topic: params.prompt,
-                tags: params.style // Just use the genre as the tag
+                topic: params.topic,
+                tags: params.tags
             };
 
             const response = await fetch(this.GENERATE_ENDPOINT, {

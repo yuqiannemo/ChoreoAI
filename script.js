@@ -646,17 +646,22 @@ class AIChoreographer {
         }
 
         // Get form values
-        const description = document.getElementById('songDescription').value.trim();
-        const genre = document.getElementById('songGenre').value;
+        const topic = document.getElementById('songTopic').value.trim();
+        const tag = document.getElementById('songTag').value.trim();
 
         // Validate inputs
-        if (!description) {
-            this.showNotification('Please enter a song description', 'error');
+        if (!topic) {
+            this.showNotification('Please enter a topic for your song', 'error');
             return;
         }
 
-        if (description.length < 10) {
-            this.showNotification('Song description must be at least 10 characters long', 'error');
+        if (!tag) {
+            this.showNotification('Please enter at least one tag', 'error');
+            return;
+        }
+
+        if (topic.length < 3) {
+            this.showNotification('Topic must be at least 3 characters long', 'error');
             return;
         }
 
@@ -667,11 +672,8 @@ class AIChoreographer {
         try {
             // Generate song with Suno
             const result = await window.sunoService.generateSong({
-                prompt: description,
-                style: genre,
-                mood: 'energetic', // Default mood since we removed the input
-                duration: 120, // Default duration since we removed the input
-                tempo: 120 // Default tempo since we removed the input
+                topic: topic,
+                tags: tag
             });
 
             console.log('Suno generation started:', result);
