@@ -36,14 +36,29 @@ class SimpleDemoService {
     }
 
     async signIn(email, password) {
+        // Set the current user when signing in
+        this.currentUser = {
+            id: 'demo-user-123',
+            email: email,
+            full_name: email.split('@')[0] || 'Demo User',
+            created_at: new Date().toISOString()
+        };
         return { data: { user: this.currentUser }, error: null };
     }
 
     async signUp(email, password, fullName) {
+        // Set the current user when signing up
+        this.currentUser = {
+            id: 'demo-user-123',
+            email: email,
+            full_name: fullName || email.split('@')[0] || 'Demo User',
+            created_at: new Date().toISOString()
+        };
         return { data: { user: this.currentUser }, error: null };
     }
 
     async signOut() {
+        this.currentUser = null;
         return { error: null };
     }
 

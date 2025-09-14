@@ -18,6 +18,10 @@
     <script src="simple-demo-service.js"></script>
     <!-- Supabase Service -->
     <!-- <script src="supabase-service.js"></script> -->
+    <!-- Suno AI Service -->
+    <script src="suno-service.js"></script>
+    <!-- Placeholder Video Generator -->
+    <script src="placeholder-video.js"></script>
     <!-- 3D Viewer -->
     <script src="threejs-viewer.js"></script>
     <!-- Main App Script -->
@@ -48,6 +52,15 @@
             <nav class="nav">
                 <a href="#projects" class="nav-link">Projects</a>
                 <a href="#profile" class="nav-link">Profile</a>
+                <div class="user-info-nav" id="userInfoNav" style="display: none;">
+                    <div class="user-avatar-small" id="userAvatarSmall">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-details-small">
+                        <span class="user-name-small" id="userNameSmall">User</span>
+                        <span class="user-email-small" id="userEmailSmall">user@example.com</span>
+                    </div>
+                </div>
                 <button class="btn btn-outline" id="configBtn" onclick="toggleBackendConfig()">⚙️</button>
             </nav>
 
@@ -120,6 +133,7 @@
                 <!-- Upload Tabs -->
                 <div class="upload-tabs">
                     <button class="tab-btn active" data-tab="music">Upload Music</button>
+                    <button class="tab-btn" data-tab="suno">Generate with Suno AI</button>
                 </div>
 
                 <div class="upload-content">
@@ -136,6 +150,80 @@
                             </div>
                         </div>
 
+                    </div>
+
+                    <!-- Suno AI Tab -->
+                    <div class="tab-content" id="sunoTab">
+                        <div class="suno-panel">
+                            <div class="suno-header">
+                                <h3>Generate Music with Suno AI</h3>
+                                <p>Create custom songs using AI for your choreography</p>
+                            </div>
+                            
+                            <div class="suno-form">
+                                <div class="form-group">
+                                    <label for="songPrompt">Song Description</label>
+                                    <textarea id="songPrompt" placeholder="Describe the song you want to create (e.g., 'An upbeat pop song about dancing under the stars')" rows="3"></textarea>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="songStyle">Style</label>
+                                        <select id="songStyle">
+                                            <option value="pop">Pop</option>
+                                            <option value="rock">Rock</option>
+                                            <option value="hip-hop">Hip-Hop</option>
+                                            <option value="electronic">Electronic</option>
+                                            <option value="jazz">Jazz</option>
+                                            <option value="classical">Classical</option>
+                                            <option value="country">Country</option>
+                                            <option value="reggae">Reggae</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="songMood">Mood</label>
+                                        <select id="songMood">
+                                            <option value="happy">Happy</option>
+                                            <option value="energetic">Energetic</option>
+                                            <option value="calm">Calm</option>
+                                            <option value="melancholic">Melancholic</option>
+                                            <option value="romantic">Romantic</option>
+                                            <option value="dramatic">Dramatic</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="songDuration">Duration (seconds)</label>
+                                        <input type="number" id="songDuration" min="30" max="300" value="120" placeholder="120">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="songTempo">Tempo (BPM)</label>
+                                        <input type="number" id="songTempo" min="60" max="200" value="120" placeholder="120">
+                                    </div>
+                                </div>
+                                
+                                <div class="suno-actions">
+                                    <button class="btn btn-primary" id="generateSunoBtn">
+                                        <i class="fas fa-magic"></i>
+                                        Generate Song
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="suno-status" id="sunoStatus" style="display: none;">
+                                <div class="status-content">
+                                    <div class="spinner"></div>
+                                    <div class="status-text">
+                                        <h4>Generating your song...</h4>
+                                        <p id="sunoStatusText">Creating music with AI</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
@@ -204,6 +292,10 @@
                         <button class="btn btn-outline" id="mirrorToggle">
                             <i class="fas fa-sync-alt"></i>
                             Mirror
+                        </button>
+                        <button class="btn btn-outline" id="placeholderToggle">
+                            <i class="fas fa-video"></i>
+                            <span id="placeholderToggleText">Use Real Video</span>
                         </button>
                         <div class="camera-presets">
                             <button class="preset-btn active" data-angle="front">Front</button>
@@ -313,6 +405,235 @@
                     <button class="export-btn">
                         <i class="fas fa-share"></i>
                         Share Link
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Projects Section -->
+    <section class="projects-section" id="projectsSection" style="display: none;">
+        <div class="container">
+            <div class="projects-container">
+                <div class="projects-header">
+                    <h2>My Projects</h2>
+                    <p>Manage and view all your choreography projects</p>
+                    <div class="projects-actions">
+                        <button class="btn btn-primary" id="createNewProjectBtn">
+                            <i class="fas fa-plus"></i>
+                            Create New Project
+                        </button>
+                        <div class="projects-filters">
+                            <select id="statusFilter" class="filter-select">
+                                <option value="all">All Status</option>
+                                <option value="draft">Draft</option>
+                                <option value="processing">Processing</option>
+                                <option value="completed">Completed</option>
+                                <option value="failed">Failed</option>
+                            </select>
+                            <select id="sortFilter" class="filter-select">
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="name">Name A-Z</option>
+                                <option value="status">Status</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="projects-content">
+                    <!-- Projects Grid -->
+                    <div class="projects-grid" id="projectsGrid">
+                        <!-- Projects will be dynamically loaded here -->
+                    </div>
+
+                    <!-- Empty State -->
+                    <div class="empty-projects" id="emptyProjects" style="display: none;">
+                        <div class="empty-content">
+                            <div class="empty-icon">
+                                <i class="fas fa-folder-open"></i>
+                            </div>
+                            <h3>No Projects Yet</h3>
+                            <p>Start creating amazing choreography by uploading your first music file</p>
+                            <button class="btn btn-primary" onclick="window.choreographer.showUploadSection('music')">
+                                <i class="fas fa-music"></i>
+                                Create Your First Project
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Profile Section -->
+    <section class="profile-section" id="profileSection" style="display: none;">
+        <div class="container">
+            <div class="profile-container">
+                <div class="profile-header">
+                    <h2>Profile Overview</h2>
+                    <p>Manage your account and view your choreography statistics</p>
+                </div>
+
+                <div class="profile-content">
+                    <!-- User Info Card -->
+                    <div class="profile-card user-info-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-user"></i> User Information</h3>
+                            <button class="btn btn-outline btn-sm" id="editProfileBtn">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="user-avatar">
+                                <div class="avatar-placeholder" id="userAvatar">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                            </div>
+                            <div class="user-details">
+                                <div class="detail-item">
+                                    <label>Name:</label>
+                                    <span id="userName">Loading...</span>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Email:</label>
+                                    <span id="userEmail">Loading...</span>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Member Since:</label>
+                                    <span id="memberSince">Loading...</span>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Account Type:</label>
+                                    <span class="account-type" id="accountType">Free</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Card -->
+                    <div class="profile-card stats-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-chart-bar"></i> Statistics</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-music"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <div class="stat-number" id="totalProjects">0</div>
+                                        <div class="stat-label">Total Projects</div>
+                                    </div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-video"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <div class="stat-number" id="completedVideos">0</div>
+                                        <div class="stat-label">Videos Created</div>
+                                    </div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <div class="stat-number" id="totalTime">0h</div>
+                                        <div class="stat-label">Total Duration</div>
+                                    </div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-star"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <div class="stat-number" id="favoriteStyle">Hip-Hop</div>
+                                        <div class="stat-label">Favorite Style</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Projects Card -->
+                    <div class="profile-card projects-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-folder"></i> Recent Projects</h3>
+                            <button class="btn btn-outline btn-sm" id="viewAllProjectsBtn">
+                                View All
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="projects-list" id="recentProjectsList">
+                                <div class="empty-state">
+                                    <i class="fas fa-folder-open"></i>
+                                    <p>No projects yet</p>
+                                    <button class="btn btn-primary" onclick="window.choreographer.showUploadSection('music')">
+                                        Create Your First Project
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Account Settings Card -->
+                    <div class="profile-card settings-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-cog"></i> Account Settings</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="settings-list">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <h4>Email Notifications</h4>
+                                        <p>Receive updates about your projects</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="emailNotifications" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <h4>Auto-save Projects</h4>
+                                        <p>Automatically save your work</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="autoSave" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <h4>High Quality Export</h4>
+                                        <p>Export videos in highest quality</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="highQuality" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Actions -->
+                <div class="profile-actions">
+                    <button class="btn btn-outline" id="exportDataBtn">
+                        <i class="fas fa-download"></i>
+                        Export Data
+                    </button>
+                    <button class="btn btn-outline" id="changePasswordBtn">
+                        <i class="fas fa-key"></i>
+                        Change Password
+                    </button>
+                    <button class="btn btn-danger" id="deleteAccountBtn">
+                        <i class="fas fa-trash"></i>
+                        Delete Account
                     </button>
                 </div>
             </div>

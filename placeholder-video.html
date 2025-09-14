@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Placeholder Video Generator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #121212;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .video-container {
+            background: #1E1E1E;
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            border: 2px solid #333;
+        }
+        .placeholder-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 400px;
+            background: linear-gradient(135deg, #5E35B1, #FF4081);
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        .dance-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: dance 2s ease-in-out infinite;
+        }
+        .placeholder-text {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        .placeholder-subtitle {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+        .progress-bar {
+            width: 200px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            margin-top: 2rem;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #00E5FF;
+            width: 0%;
+            animation: progress 3s ease-in-out infinite;
+        }
+        @keyframes dance {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(-10deg) scale(1.1); }
+            50% { transform: rotate(0deg) scale(1); }
+            75% { transform: rotate(10deg) scale(1.1); }
+        }
+        @keyframes progress {
+            0% { width: 0%; }
+            50% { width: 100%; }
+            100% { width: 0%; }
+        }
+        .controls {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        button {
+            background: #5E35B1;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        button:hover {
+            background: #7B4FCF;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ChoreoAI Placeholder Video</h1>
+        <p>This is a placeholder video for testing the ChoreoAI interface without waiting for actual model generation.</p>
+        
+        <div class="video-container">
+            <div class="placeholder-content" id="placeholderContent">
+                <div class="dance-icon">💃</div>
+                <div class="placeholder-text">ChoreoAI</div>
+                <div class="placeholder-subtitle">AI-Generated Dance Choreography</div>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button onclick="startPlaceholder()">Start Placeholder</button>
+            <button onclick="stopPlaceholder()">Stop Placeholder</button>
+            <button onclick="downloadPlaceholder()">Download as MP4</button>
+        </div>
+        
+        <div id="status" style="margin-top: 1rem; text-align: center;"></div>
+    </div>
+
+    <script>
+        let isPlaying = false;
+        let startTime = null;
+        let animationId = null;
+
+        function startPlaceholder() {
+            if (isPlaying) return;
+            
+            isPlaying = true;
+            startTime = Date.now();
+            document.getElementById('status').textContent = 'Placeholder video started - Duration: 0:00';
+            
+            // Simulate video playback
+            animatePlaceholder();
+        }
+
+        function stopPlaceholder() {
+            isPlaying = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            document.getElementById('status').textContent = 'Placeholder video stopped';
+        }
+
+        function animatePlaceholder() {
+            if (!isPlaying) return;
+            
+            const elapsed = (Date.now() - startTime) / 1000;
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = Math.floor(elapsed % 60);
+            
+            document.getElementById('status').textContent = 
+                `Placeholder video playing - Duration: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Simulate 3-minute video
+            if (elapsed < 180) {
+                animationId = requestAnimationFrame(animatePlaceholder);
+            } else {
+                stopPlaceholder();
+                document.getElementById('status').textContent = 'Placeholder video completed (3:00)';
+            }
+        }
+
+        function downloadPlaceholder() {
+            // Create a simple MP4 placeholder (this would need a proper video file in production)
+            const link = document.createElement('a');
+            link.href = 'data:text/plain;charset=utf-8,Placeholder video file for ChoreoAI testing';
+            link.download = 'choreoai-placeholder.mp4';
+            link.click();
+            
+            document.getElementById('status').textContent = 'Placeholder video download started';
+        }
+
+        // Auto-start for demo
+        setTimeout(startPlaceholder, 1000);
+    </script>
+</body>
+</html>

@@ -30,27 +30,62 @@ class AIChoreographer {
         this.animateOnScroll();
         this.setupSupabaseSubscriptions();
         this.init3DViewer();
+        this.initializePlaceholderMode();
     }
 
     async checkAuthentication() {
         const user = await window.choreographyService.getCurrentUser();
         this.isAuthenticated = !!user;
+        console.log('Authentication check:', { user, isAuthenticated: this.isAuthenticated });
         this.updateAuthUI();
     }
 
     updateAuthUI() {
         const nav = document.querySelector('.nav');
+        const userInfoNav = document.getElementById('userInfoNav');
+        
         if (this.isAuthenticated) {
             nav.innerHTML = `
                 <a href="#projects" class="nav-link">Projects</a>
                 <a href="#profile" class="nav-link">Profile</a>
+                <div class="user-info-nav" id="userInfoNav">
+                    <div class="user-avatar-small" id="userAvatarSmall">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-details-small">
+                        <span class="user-name-small" id="userNameSmall">User</span>
+                        <span class="user-email-small" id="userEmailSmall">user@example.com</span>
+                    </div>
+                </div>
                 <button class="btn btn-outline" id="logoutBtn">Logout</button>
             `;
+            
+            // Update user info display
+            this.updateUserInfoDisplay();
         } else {
             nav.innerHTML = `
                 <button class="btn btn-outline" id="loginBtn">Login</button>
                 <button class="btn btn-primary" id="signupBtn">Sign Up</button>
             `;
+        }
+    }
+
+    async updateUserInfoDisplay() {
+        try {
+            const user = await window.choreographyService.getCurrentUser();
+            if (user) {
+                const userNameSmall = document.getElementById('userNameSmall');
+                const userEmailSmall = document.getElementById('userEmailSmall');
+                
+                if (userNameSmall) {
+                    userNameSmall.textContent = user.full_name || user.email || 'User';
+                }
+                if (userEmailSmall) {
+                    userEmailSmall.textContent = user.email || 'user@example.com';
+                }
+            }
+        } catch (error) {
+            console.error('Error updating user info display:', error);
         }
     }
 
@@ -85,6 +120,15 @@ class AIChoreographer {
             });
         }
 
+        const generateSunoBtn = document.getElementById('generateSunoBtn');
+        if (generateSunoBtn) {
+            generateSunoBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Generate Suno button clicked');
+                this.generateSunoSong();
+            });
+        }
+
         const cancelBtn = document.getElementById('cancelBtn');
         if (cancelBtn) {
             cancelBtn.addEventListener('click', (e) => {
@@ -109,6 +153,15 @@ class AIChoreographer {
                 e.preventDefault();
                 console.log('Mirror toggle clicked');
                 this.toggleMirror();
+            });
+        }
+
+        const placeholderToggle = document.getElementById('placeholderToggle');
+        if (placeholderToggle) {
+            placeholderToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Placeholder toggle clicked');
+                this.togglePlaceholderMode();
             });
         }
 
@@ -220,6 +273,62 @@ class AIChoreographer {
             } else if (e.target.id === 'logoutBtn') {
                 console.log('Logout button clicked');
                 this.logout();
+            }
+        });
+
+        // Profile navigation
+        const profileLink = document.querySelector('a[href="#profile"]');
+        if (profileLink) {
+            profileLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Profile link clicked');
+                this.showProfileSection();
+            });
+        }
+
+        // Projects navigation
+        const projectsLink = document.querySelector('a[href="#projects"]');
+        if (projectsLink) {
+            projectsLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Projects link clicked');
+                this.showProjectsSection();
+            });
+        }
+
+        // Profile page event listeners
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'editProfileBtn') {
+                this.editProfile();
+            } else if (e.target.id === 'viewAllProjectsBtn') {
+                this.viewAllProjects();
+            } else if (e.target.id === 'exportDataBtn') {
+                this.exportUserData();
+            } else if (e.target.id === 'changePasswordBtn') {
+                this.changePassword();
+            } else if (e.target.id === 'deleteAccountBtn') {
+                this.deleteAccount();
+            } else if (e.target.id === 'createNewProjectBtn') {
+                this.showUploadSection('music');
+            } else if (e.target.closest('#userInfoNav')) {
+                // User clicked on user info navigation
+                this.showProfileSection();
+            }
+        });
+
+        // Projects page event listeners
+        document.addEventListener('change', (e) => {
+            if (e.target.id === 'statusFilter' || e.target.id === 'sortFilter') {
+                this.filterAndSortProjects();
+            }
+        });
+
+        // Settings toggle listeners
+        document.addEventListener('change', (e) => {
+            if (e.target.id === 'emailNotifications' || 
+                e.target.id === 'autoSave' || 
+                e.target.id === 'highQuality') {
+                this.saveUserSettings();
             }
         });
 
@@ -368,6 +477,22 @@ class AIChoreographer {
         this.scrollToSection('uploadSection');
     }
 
+    showProfileSection() {
+        this.hideAllSections();
+        document.getElementById('profileSection').style.display = 'block';
+        this.currentSection = 'profile';
+        this.scrollToSection('profileSection');
+        this.loadProfileData();
+    }
+
+    showProjectsSection() {
+        this.hideAllSections();
+        document.getElementById('projectsSection').style.display = 'block';
+        this.currentSection = 'projects';
+        this.scrollToSection('projectsSection');
+        this.loadProjectsData();
+    }
+
     switchTab(tabName) {
         // Update tab buttons
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -509,6 +634,174 @@ class AIChoreographer {
 
         // Add visual feedback
         this.showNotification(`${style.charAt(0).toUpperCase() + style.slice(1)} style selected!`, 'info');
+    }
+
+    // Suno AI Integration Methods
+    async generateSunoSong() {
+        console.log('Starting Suno song generation...');
+        
+        if (!window.sunoService || !window.sunoService.isAvailable()) {
+            this.showNotification('Suno AI service is not available. Please check API configuration.', 'error');
+            return;
+        }
+
+        // Get form values
+        const prompt = document.getElementById('songPrompt').value.trim();
+        const style = document.getElementById('songStyle').value;
+        const mood = document.getElementById('songMood').value;
+        const duration = parseInt(document.getElementById('songDuration').value);
+        const tempo = parseInt(document.getElementById('songTempo').value);
+
+        // Validate inputs
+        if (!prompt) {
+            this.showNotification('Please enter a song description', 'error');
+            return;
+        }
+
+        if (prompt.length < 10) {
+            this.showNotification('Song description must be at least 10 characters long', 'error');
+            return;
+        }
+
+        // Show status
+        this.showSunoStatus(true);
+        this.updateSunoStatus('Preparing song generation...');
+
+        try {
+            // Generate song with Suno
+            const result = await window.sunoService.generateSong({
+                prompt,
+                style,
+                mood,
+                duration,
+                tempo
+            });
+
+            console.log('Suno generation started:', result);
+            this.updateSunoStatus('Song generation in progress...');
+
+            // Start polling for completion
+            this.pollSunoGeneration(result.generation_id);
+
+        } catch (error) {
+            console.error('Suno generation error:', error);
+            this.showSunoStatus(false);
+            this.showNotification('Failed to generate song: ' + error.message, 'error');
+        }
+    }
+
+    async pollSunoGeneration(generationId) {
+        console.log('Polling Suno generation:', generationId);
+
+        window.sunoService.pollGeneration(
+            generationId,
+            // onUpdate
+            (status) => {
+                console.log('Suno status update:', status);
+                this.updateSunoStatus(`Generating... ${Math.round(status.progress || 0)}%`);
+            },
+            // onComplete
+            async (status) => {
+                console.log('Suno generation completed:', status);
+                this.updateSunoStatus('Song generated successfully!');
+                
+                try {
+                    // Download the generated song
+                    const audioBlob = await window.sunoService.downloadSong(generationId);
+                    
+                    // Create a file from the blob
+                    const audioFile = new File([audioBlob], `suno-song-${generationId}.mp3`, {
+                        type: 'audio/mpeg'
+                    });
+
+                    // Create project with the generated song
+                    await this.createProjectFromSunoSong(audioFile, generationId, status);
+                    
+                    this.showSunoStatus(false);
+                    this.showNotification('Song generated successfully! Ready for choreography.', 'success');
+                    
+                    // Switch to music tab to show the generated song
+                    this.switchTab('music');
+                    
+                } catch (error) {
+                    console.error('Error processing generated song:', error);
+                    this.showSunoStatus(false);
+                    this.showNotification('Song generated but failed to process: ' + error.message, 'error');
+                }
+            },
+            // onError
+            (error) => {
+                console.error('Suno generation failed:', error);
+                this.showSunoStatus(false);
+                this.showNotification('Song generation failed: ' + error.message, 'error');
+            }
+        );
+    }
+
+    async createProjectFromSunoSong(audioFile, generationId, sunoStatus) {
+        try {
+            // Create project data
+            const projectData = {
+                title: `Suno Generated Song - ${generationId}`,
+                audio_file_name: audioFile.name,
+                audio_file_size: audioFile.size,
+                audio_file_type: audioFile.type,
+                status: 'uploaded',
+                is_suno_generated: true,
+                suno_generation_id: generationId,
+                suno_metadata: sunoStatus.result || {}
+            };
+
+            // Create project in the system
+            const { data: project, error: projectError } = await window.choreographyService.createProject(projectData);
+            if (projectError) throw projectError;
+
+            this.currentProject = project;
+
+            // Upload the audio file
+            const uploadResult = await window.choreographyService.uploadAudioFile(audioFile, project.id);
+
+            // Update project with file path
+            await window.choreographyService.updateProject(project.id, {
+                audio_file_path: uploadResult.path,
+                uploadId: uploadResult.uploadId
+            });
+
+            console.log('Project created from Suno song:', project);
+
+        } catch (error) {
+            console.error('Error creating project from Suno song:', error);
+            throw error;
+        }
+    }
+
+    showSunoStatus(show) {
+        const sunoStatus = document.getElementById('sunoStatus');
+        const sunoForm = document.querySelector('.suno-form');
+        const generateBtn = document.getElementById('generateSunoBtn');
+
+        if (sunoStatus && sunoForm && generateBtn) {
+            if (show) {
+                sunoStatus.style.display = 'block';
+                sunoForm.style.opacity = '0.5';
+                sunoForm.style.pointerEvents = 'none';
+                generateBtn.disabled = true;
+                generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+            } else {
+                sunoStatus.style.display = 'none';
+                sunoForm.style.opacity = '1';
+                sunoForm.style.pointerEvents = 'auto';
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<i class="fas fa-magic"></i> Generate Song';
+            }
+        }
+    }
+
+    updateSunoStatus(message) {
+        const statusText = document.getElementById('sunoStatusText');
+        if (statusText) {
+            statusText.textContent = message;
+        }
     }
 
     // File upload methods
@@ -929,33 +1222,43 @@ class AIChoreographer {
             const videoSource = document.getElementById('videoSource');
 
             if (videoElement && videoSource) {
-                // Get the generation ID from localStorage (updated by demo service)
-                const project = JSON.parse(localStorage.getItem('currentProject') || '{}');
-                const generationId = project.generation_id;
-
-                if (!generationId) {
-                    console.error('No generation ID available in project:', project);
-                    this.showNotification('No generation ID found. Please generate again.', 'error');
-                    return;
-                }
-
-                // Set video source to backend download endpoint using generation_id
-                // First try to get the actual filename from the status
-                const statusResponse = await fetch(`http://localhost:5001/api/status/${generationId}`);
-
+                // Check if we should use placeholder video for testing
+                const usePlaceholder = this.shouldUsePlaceholderVideo();
+                
                 let videoUrl;
-                if (statusResponse.ok) {
-                    const status = await statusResponse.json();
-                    if (status.status === 'completed' && status.result && status.result.video_filename) {
-                        // Use direct file serving for better compatibility
-                        videoUrl = `http://localhost:5001/outputs/${status.result.video_filename}`;
-                    } else {
-                        // Fallback to download endpoint
-                        videoUrl = `http://localhost:5001/api/download/${generationId}/video`;
-                    }
+                
+                if (usePlaceholder) {
+                    console.log('Using placeholder video for testing');
+                    videoUrl = this.getPlaceholderVideoUrl();
+                    this.showNotification('Using placeholder video for testing', 'info');
                 } else {
-                    // Fallback to download endpoint
-                    videoUrl = `http://localhost:5001/api/download/${generationId}/video`;
+                    // Get the generation ID from localStorage (updated by demo service)
+                    const project = JSON.parse(localStorage.getItem('currentProject') || '{}');
+                    const generationId = project.generation_id;
+
+                    if (!generationId) {
+                        console.error('No generation ID available in project:', project);
+                        this.showNotification('No generation ID found. Using placeholder video.', 'info');
+                        videoUrl = this.getPlaceholderVideoUrl();
+                    } else {
+                        // Set video source to backend download endpoint using generation_id
+                        // First try to get the actual filename from the status
+                        const statusResponse = await fetch(`http://localhost:5001/api/status/${generationId}`);
+
+                        if (statusResponse.ok) {
+                            const status = await statusResponse.json();
+                            if (status.status === 'completed' && status.result && status.result.video_filename) {
+                                // Use direct file serving for better compatibility
+                                videoUrl = `http://localhost:5001/outputs/${status.result.video_filename}`;
+                            } else {
+                                // Fallback to download endpoint
+                                videoUrl = `http://localhost:5001/api/download/${generationId}/video`;
+                            }
+                        } else {
+                            // Fallback to download endpoint
+                            videoUrl = `http://localhost:5001/api/download/${generationId}/video`;
+                        }
+                    }
                 }
 
                 console.log('Setting video URL:', videoUrl);
@@ -976,7 +1279,14 @@ class AIChoreographer {
 
                 videoElement.onerror = (e) => {
                     console.error('Video load error:', e);
-                    this.showNotification('Failed to load video. Check browser console for details.', 'error');
+                    // Fallback to placeholder if real video fails
+                    if (!usePlaceholder) {
+                        console.log('Real video failed, falling back to placeholder');
+                        videoSource.src = this.getPlaceholderVideoUrl();
+                        videoElement.load();
+                    } else {
+                        this.showNotification('Failed to load video. Check browser console for details.', 'error');
+                    }
                 };
 
                 // Add event listeners for video controls
@@ -1113,9 +1423,409 @@ class AIChoreographer {
         });
     }
 
+    // Profile methods
+    async loadProfileData() {
+        try {
+            const user = await window.choreographyService.getCurrentUser();
+            if (user) {
+                this.updateUserInfo(user);
+                this.loadUserStatistics();
+                this.loadRecentProjects();
+                this.loadUserSettings();
+            }
+        } catch (error) {
+            console.error('Error loading profile data:', error);
+            this.showNotification('Failed to load profile data', 'error');
+        }
+    }
+
+    updateUserInfo(user) {
+        // Update user information display
+        const userName = document.getElementById('userName');
+        const userEmail = document.getElementById('userEmail');
+        const memberSince = document.getElementById('memberSince');
+        const accountType = document.getElementById('accountType');
+
+        if (userName) userName.textContent = user.full_name || user.email || 'Demo User';
+        if (userEmail) userEmail.textContent = user.email || 'demo@example.com';
+        if (memberSince) {
+            const joinDate = user.created_at ? new Date(user.created_at) : new Date();
+            memberSince.textContent = joinDate.toLocaleDateString();
+        }
+        if (accountType) {
+            accountType.textContent = user.account_type || 'Free';
+            accountType.className = `account-type ${(user.account_type || 'free').toLowerCase()}`;
+        }
+    }
+
+    loadUserStatistics() {
+        // Load user statistics (mock data for demo)
+        const totalProjects = document.getElementById('totalProjects');
+        const completedVideos = document.getElementById('completedVideos');
+        const totalTime = document.getElementById('totalTime');
+        const favoriteStyle = document.getElementById('favoriteStyle');
+
+        // Get statistics from localStorage or use mock data
+        const stats = JSON.parse(localStorage.getItem('userStats') || '{}');
+        
+        if (totalProjects) totalProjects.textContent = stats.totalProjects || '0';
+        if (completedVideos) completedVideos.textContent = stats.completedVideos || '0';
+        if (totalTime) totalTime.textContent = stats.totalTime || '0h';
+        if (favoriteStyle) favoriteStyle.textContent = stats.favoriteStyle || 'Hip-Hop';
+    }
+
+    loadRecentProjects() {
+        const recentProjectsList = document.getElementById('recentProjectsList');
+        if (!recentProjectsList) return;
+
+        // Get recent projects from localStorage
+        const projects = JSON.parse(localStorage.getItem('userProjects') || '[]');
+        
+        if (projects.length === 0) {
+            recentProjectsList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-folder-open"></i>
+                    <p>No projects yet</p>
+                    <button class="btn btn-primary" onclick="window.choreographer.showUploadSection('music')">
+                        Create Your First Project
+                    </button>
+                </div>
+            `;
+        } else {
+            recentProjectsList.innerHTML = projects.slice(0, 3).map(project => `
+                <div class="project-item">
+                    <div class="project-icon">
+                        <i class="fas fa-music"></i>
+                    </div>
+                    <div class="project-info">
+                        <div class="project-name">${project.title || 'Untitled Project'}</div>
+                        <div class="project-meta">${project.status || 'Draft'} • ${new Date(project.created_at).toLocaleDateString()}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    loadUserSettings() {
+        // Load user settings from localStorage
+        const settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+        
+        const emailNotifications = document.getElementById('emailNotifications');
+        const autoSave = document.getElementById('autoSave');
+        const highQuality = document.getElementById('highQuality');
+
+        if (emailNotifications) emailNotifications.checked = settings.emailNotifications !== false;
+        if (autoSave) autoSave.checked = settings.autoSave !== false;
+        if (highQuality) highQuality.checked = settings.highQuality !== false;
+    }
+
+    saveUserSettings() {
+        const settings = {
+            emailNotifications: document.getElementById('emailNotifications')?.checked || false,
+            autoSave: document.getElementById('autoSave')?.checked || false,
+            highQuality: document.getElementById('highQuality')?.checked || false
+        };
+        
+        localStorage.setItem('userSettings', JSON.stringify(settings));
+        this.showNotification('Settings saved successfully', 'success');
+    }
+
+    editProfile() {
+        this.showNotification('Profile editing feature coming soon!', 'info');
+    }
+
+    viewAllProjects() {
+        this.showNotification('Projects view feature coming soon!', 'info');
+    }
+
+    exportUserData() {
+        try {
+            const userData = {
+                user: JSON.parse(localStorage.getItem('currentProject') || '{}'),
+                settings: JSON.parse(localStorage.getItem('userSettings') || '{}'),
+                stats: JSON.parse(localStorage.getItem('userStats') || '{}'),
+                projects: JSON.parse(localStorage.getItem('userProjects') || '[]')
+            };
+
+            const dataStr = JSON.stringify(userData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'choreoai-user-data.json';
+            link.click();
+            
+            URL.revokeObjectURL(url);
+            this.showNotification('User data exported successfully!', 'success');
+        } catch (error) {
+            console.error('Export error:', error);
+            this.showNotification('Failed to export user data', 'error');
+        }
+    }
+
+    changePassword() {
+        this.showNotification('Password change feature coming soon!', 'info');
+    }
+
+    deleteAccount() {
+        if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+            if (confirm('This will permanently delete all your data. Are you absolutely sure?')) {
+                // Clear all user data
+                localStorage.removeItem('currentProject');
+                localStorage.removeItem('userSettings');
+                localStorage.removeItem('userStats');
+                localStorage.removeItem('userProjects');
+                
+                this.showNotification('Account deleted successfully', 'success');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            }
+        }
+    }
+
+    // Projects methods
+    async loadProjectsData() {
+        try {
+            // Get projects from localStorage or create mock data
+            let projects = JSON.parse(localStorage.getItem('userProjects') || '[]');
+            
+            // If no projects exist, create some mock data for demo
+            if (projects.length === 0) {
+                projects = this.createMockProjects();
+                localStorage.setItem('userProjects', JSON.stringify(projects));
+            }
+
+            this.displayProjects(projects);
+            this.updateProjectsStats(projects);
+        } catch (error) {
+            console.error('Error loading projects data:', error);
+            this.showNotification('Failed to load projects', 'error');
+        }
+    }
+
+    createMockProjects() {
+        const mockProjects = [
+            {
+                id: 'project-1',
+                title: 'Hip-Hop Dance Routine',
+                status: 'completed',
+                created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+                audio_file_name: 'hip-hop-beat.mp3',
+                duration: '3:45',
+                style: 'Hip-Hop',
+                thumbnail: null
+            },
+            {
+                id: 'project-2',
+                title: 'Contemporary Flow',
+                status: 'processing',
+                created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+                audio_file_name: 'contemporary-music.wav',
+                duration: '4:12',
+                style: 'Contemporary',
+                thumbnail: null
+            },
+            {
+                id: 'project-3',
+                title: 'Jazz Fusion',
+                status: 'draft',
+                created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+                audio_file_name: 'jazz-fusion.mp3',
+                duration: '2:58',
+                style: 'Jazz',
+                thumbnail: null
+            }
+        ];
+        return mockProjects;
+    }
+
+    displayProjects(projects) {
+        const projectsGrid = document.getElementById('projectsGrid');
+        const emptyProjects = document.getElementById('emptyProjects');
+
+        if (!projectsGrid || !emptyProjects) return;
+
+        if (projects.length === 0) {
+            projectsGrid.style.display = 'none';
+            emptyProjects.style.display = 'flex';
+        } else {
+            projectsGrid.style.display = 'grid';
+            emptyProjects.style.display = 'none';
+            
+            projectsGrid.innerHTML = projects.map(project => this.createProjectCard(project)).join('');
+        }
+    }
+
+    createProjectCard(project) {
+        const statusClass = project.status || 'draft';
+        const createdDate = new Date(project.created_at).toLocaleDateString();
+        
+        return `
+            <div class="project-card" data-project-id="${project.id}">
+                <div class="project-thumbnail">
+                    <div class="thumbnail-placeholder">
+                        <i class="fas fa-music"></i>
+                        <span>${project.style || 'Dance'}</span>
+                    </div>
+                    <div class="project-status ${statusClass}">${statusClass}</div>
+                </div>
+                <div class="project-info">
+                    <h3 class="project-title">${project.title || 'Untitled Project'}</h3>
+                    <div class="project-meta">
+                        <div class="project-meta-item">
+                            <i class="fas fa-calendar"></i>
+                            <span>Created ${createdDate}</span>
+                        </div>
+                        <div class="project-meta-item">
+                            <i class="fas fa-clock"></i>
+                            <span>${project.duration || 'Unknown'}</span>
+                        </div>
+                        <div class="project-meta-item">
+                            <i class="fas fa-music"></i>
+                            <span>${project.audio_file_name || 'No audio'}</span>
+                        </div>
+                    </div>
+                    <div class="project-actions">
+                        <button class="btn btn-primary btn-sm" onclick="window.choreographer.openProject('${project.id}')">
+                            <i class="fas fa-play"></i>
+                            Open
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="window.choreographer.duplicateProject('${project.id}')">
+                            <i class="fas fa-copy"></i>
+                            Duplicate
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="window.choreographer.deleteProject('${project.id}')">
+                            <i class="fas fa-trash"></i>
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    filterAndSortProjects() {
+        const statusFilter = document.getElementById('statusFilter')?.value || 'all';
+        const sortFilter = document.getElementById('sortFilter')?.value || 'newest';
+        
+        let projects = JSON.parse(localStorage.getItem('userProjects') || '[]');
+        
+        // Filter by status
+        if (statusFilter !== 'all') {
+            projects = projects.filter(project => project.status === statusFilter);
+        }
+        
+        // Sort projects
+        switch (sortFilter) {
+            case 'newest':
+                projects.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                break;
+            case 'oldest':
+                projects.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                break;
+            case 'name':
+                projects.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+                break;
+            case 'status':
+                projects.sort((a, b) => (a.status || '').localeCompare(b.status || ''));
+                break;
+        }
+        
+        this.displayProjects(projects);
+    }
+
+    updateProjectsStats(projects) {
+        const stats = {
+            totalProjects: projects.length,
+            completedVideos: projects.filter(p => p.status === 'completed').length,
+            totalTime: this.calculateTotalTime(projects),
+            favoriteStyle: this.getFavoriteStyle(projects)
+        };
+        
+        localStorage.setItem('userStats', JSON.stringify(stats));
+    }
+
+    calculateTotalTime(projects) {
+        const totalSeconds = projects.reduce((total, project) => {
+            if (project.duration) {
+                const [minutes, seconds] = project.duration.split(':').map(Number);
+                return total + (minutes * 60) + seconds;
+            }
+            return total;
+        }, 0);
+        
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        
+        if (hours > 0) {
+            return `${hours}h ${minutes}m`;
+        }
+        return `${minutes}m`;
+    }
+
+    getFavoriteStyle(projects) {
+        const styleCount = {};
+        projects.forEach(project => {
+            const style = project.style || 'Unknown';
+            styleCount[style] = (styleCount[style] || 0) + 1;
+        });
+        
+        const favorite = Object.keys(styleCount).reduce((a, b) => 
+            styleCount[a] > styleCount[b] ? a : b, 'Hip-Hop'
+        );
+        
+        return favorite;
+    }
+
+    openProject(projectId) {
+        const projects = JSON.parse(localStorage.getItem('userProjects') || '[]');
+        const project = projects.find(p => p.id === projectId);
+        
+        if (project) {
+            this.currentProject = project;
+            this.showNotification(`Opening project: ${project.title}`, 'info');
+            // Here you would typically load the project into the studio
+            this.showStudioSection();
+        }
+    }
+
+    duplicateProject(projectId) {
+        const projects = JSON.parse(localStorage.getItem('userProjects') || '[]');
+        const project = projects.find(p => p.id === projectId);
+        
+        if (project) {
+            const duplicatedProject = {
+                ...project,
+                id: 'project-' + Date.now(),
+                title: project.title + ' (Copy)',
+                status: 'draft',
+                created_at: new Date().toISOString()
+            };
+            
+            projects.unshift(duplicatedProject);
+            localStorage.setItem('userProjects', JSON.stringify(projects));
+            
+            this.displayProjects(projects);
+            this.showNotification('Project duplicated successfully', 'success');
+        }
+    }
+
+    deleteProject(projectId) {
+        if (confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+            const projects = JSON.parse(localStorage.getItem('userProjects') || '[]');
+            const filteredProjects = projects.filter(p => p.id !== projectId);
+            
+            localStorage.setItem('userProjects', JSON.stringify(filteredProjects));
+            this.displayProjects(filteredProjects);
+            this.showNotification('Project deleted successfully', 'success');
+        }
+    }
+
     // Utility methods
     hideAllSections() {
-        const sections = ['uploadSection', 'progressSection', 'studioSection', 'exportSection'];
+        const sections = ['uploadSection', 'progressSection', 'studioSection', 'exportSection', 'profileSection', 'projectsSection'];
         sections.forEach(sectionId => {
             document.getElementById(sectionId).style.display = 'none';
         });
@@ -1469,6 +2179,95 @@ class AIChoreographer {
             await this.checkAuthentication();
         } catch (error) {
             this.showNotification('Logout failed: ' + error.message, 'error');
+        }
+    }
+
+    // Placeholder Video Methods
+    shouldUsePlaceholderVideo() {
+        // Check if we should use placeholder video for testing
+        // This can be controlled by URL parameter, localStorage, or environment
+        const urlParams = new URLSearchParams(window.location.search);
+        const usePlaceholder = urlParams.get('placeholder') === 'true' || 
+                              localStorage.getItem('usePlaceholderVideo') === 'true' ||
+                              !this.isProductionEnvironment();
+        
+        return usePlaceholder;
+    }
+
+    getPlaceholderVideoUrl() {
+        // Return a placeholder video URL
+        // This could be a local file, data URL, or external placeholder
+        return this.createPlaceholderVideoDataUrl();
+    }
+
+    createPlaceholderVideoDataUrl() {
+        // Use the placeholder video generator if available
+        if (window.PlaceholderVideoGenerator) {
+            return window.PlaceholderVideoGenerator.createSimplePlaceholderUrl();
+        }
+        
+        // Fallback to simple base64 video
+        return 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMWF2YzEAAAAIZnJlZQAAArxtZGF0AAACrgYF//+q3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE2MiByMzA4MSBkODVhYjQ5IC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlsZWZ0IDIwMDMtMjAyMSAtIGh0dHA6Ly93d3cudmlkZW9sYW4ub3JnL3gyNjQuaHRtbCAtIG9wdGlvbnM6IGNhYmFjPTEgcmVmPTMgZGVibG9jaz0xOjA6MCBhbmFseXNlPTB4MzoweDExMyBtZT1oZXggc3VibWU9NyBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0xIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MSA4eDhkY3Q9MSBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0tMiB0aHJlYWRzPTEgbG9va2FoZWFkX3RocmVhZHM9MSBzbGljZWRfdGhyZWFkcz0wIG5yPTAgZGVjaW1hdGU9MSBpbnRlcmxhY2VkPTAgYmx1cmF5X2NvbXBhdD0wIGNvbnN0cmFpbmVkX2ludHJhPTAgYmZyYW1lcz0zIGJfcHlyYW1pZD0yIGJfYWRhcHQ9MSBiX2JpYXM9MCBkaXJlY3Q9MSB3ZWlnaHRiPTEgb3Blbl9nb3A9MCB3ZWlnaHRwPTIga2V5aW50PTI1MCBrZXlpbnRfbWluPTEwIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAABWWIhAA3//728P4FN4y8X09Sut8yI8AXevs8IAAADAAADAAADAAADACwgIAAAAAAAB8YzQyLjAuMTAwMQEAAAAAO64AAAAA';
+    }
+
+    isProductionEnvironment() {
+        // Simple check to determine if we're in production
+        return window.location.hostname !== 'localhost' && 
+               window.location.hostname !== '127.0.0.1' &&
+               !window.location.hostname.includes('dev');
+    }
+
+    togglePlaceholderMode() {
+        // Toggle placeholder video mode
+        const currentMode = localStorage.getItem('usePlaceholderVideo') === 'true';
+        const newMode = !currentMode;
+        localStorage.setItem('usePlaceholderVideo', newMode.toString());
+        
+        // Update button text
+        const toggleText = document.getElementById('placeholderToggleText');
+        if (toggleText) {
+            toggleText.textContent = newMode ? 'Use Placeholder' : 'Use Real Video';
+        }
+        
+        // Update button state
+        const toggleBtn = document.getElementById('placeholderToggle');
+        if (toggleBtn) {
+            if (newMode) {
+                toggleBtn.classList.add('active');
+            } else {
+                toggleBtn.classList.remove('active');
+            }
+        }
+        
+        this.showNotification(
+            `Placeholder video mode ${newMode ? 'enabled' : 'disabled'}`, 
+            'info'
+        );
+        
+        // Reload video if we're in studio mode
+        if (this.currentSection === 'studio') {
+            this.loadGeneratedVideo();
+        }
+        
+        return newMode;
+    }
+
+    initializePlaceholderMode() {
+        // Initialize placeholder mode button state
+        const currentMode = localStorage.getItem('usePlaceholderVideo') === 'true';
+        const toggleText = document.getElementById('placeholderToggleText');
+        const toggleBtn = document.getElementById('placeholderToggle');
+        
+        if (toggleText) {
+            toggleText.textContent = currentMode ? 'Use Placeholder' : 'Use Real Video';
+        }
+        
+        if (toggleBtn) {
+            if (currentMode) {
+                toggleBtn.classList.add('active');
+            } else {
+                toggleBtn.classList.remove('active');
+            }
         }
     }
 
