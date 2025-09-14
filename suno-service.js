@@ -26,7 +26,7 @@ class SunoService {
 
         try {
             console.log('Generating song with Suno API...', params);
-            
+
             // Create the request body based on the notebook example
             const requestBody = {
                 topic: params.topic,
@@ -49,10 +49,10 @@ class SunoService {
 
             const data = await response.json();
             console.log('Suno generation response:', data);
-            
-            // Return the first clip from the response
-            if (data && data.length > 0) {
-                const clip = data[0];
+
+            // Handle single-object response (not array)
+            if (data && data.id) {
+                const clip = data;
                 this.currentGeneration = {
                     id: clip.id,
                     status: clip.status,
@@ -71,7 +71,7 @@ class SunoService {
                     message: 'Song generation started successfully'
                 };
             } else {
-                throw new Error('No clips returned from Suno API');
+                throw new Error('No valid clip returned from Suno API');
             }
 
         } catch (error) {
@@ -89,7 +89,7 @@ class SunoService {
     async checkGenerationStatus(clipId) {
         try {
             console.log('Polling Suno generation status for clip:', clipId);
-            
+
             const response = await fetch(`${this.CLIPS_ENDPOINT}?ids=${clipId}`, {
                 method: 'GET',
                 headers: {
@@ -104,7 +104,7 @@ class SunoService {
 
             const data = await response.json();
             console.log('Suno polling response:', data);
-            
+
             if (data && data.length > 0) {
                 const clip = data[0];
                 return {
@@ -135,12 +135,12 @@ class SunoService {
     async downloadSong(audioUrl) {
         try {
             console.log('Downloading song from:', audioUrl);
-            
+
             const response = await fetch(audioUrl);
             if (!response.ok) {
                 throw new Error(`Download error: ${response.statusText}`);
             }
-            
+
             const blob = await response.blob();
             console.log('Downloaded audio blob:', blob.size, 'bytes');
             return blob;
@@ -183,7 +183,7 @@ class SunoService {
         const poll = async () => {
             try {
                 const status = await this.checkGenerationStatus(clipId);
-                
+
                 // Call update callback
                 if (onUpdate) {
                     onUpdate(status);
@@ -310,6 +310,8 @@ class SunoService {
      * @returns {boolean} Service availability
      */
     isAvailable() {
+        print('Checking Suno service availability...');
+        print('Current API Key:', this.API_KEY);
         return !!this.API_KEY && this.API_KEY !== 'your-suno-api-key';
     }
 
