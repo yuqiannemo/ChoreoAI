@@ -1,8 +1,11 @@
 # requirements.txt
 
 # Core (leave torch out, we’ll install separately)
-torchvision==0.13.1
-torchaudio==0.12.1
+# torchvision==0.13.1
+# torchaudio==0.12.1
+torch==2.4.1
+torchvision==0.19.1
+
 
 # Hugging Face utilities
 accelerate
